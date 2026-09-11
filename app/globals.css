@@ -1,26 +1,260 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ==========================================
+   TAILWIND v4 THEME MAPPING
+   Maps CSS variables → Tailwind utilities
+   ========================================== */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
+/* ==========================================
+   CSS CUSTOM PROPERTIES (Design Tokens)
+   ========================================== */
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: hsl(220, 20%, 6%);
+    --foreground: hsl(210, 40%, 98%);
+    --card: hsl(220, 18%, 10%);
+    --card-foreground: hsl(210, 40%, 98%);
+    --popover: hsl(220, 18%, 10%);
+    --popover-foreground: hsl(210, 40%, 98%);
+    --primary: hsl(142, 71%, 45%);
+    --primary-foreground: hsl(144, 100%, 5%);
+    --secondary: hsl(220, 15%, 16%);
+    --secondary-foreground: hsl(210, 40%, 98%);
+    --muted: hsl(220, 15%, 14%);
+    --muted-foreground: hsl(215, 20%, 55%);
+    --accent: hsl(142, 60%, 35%);
+    --accent-foreground: hsl(142, 100%, 90%);
+    --destructive: hsl(0, 72%, 51%);
+    --destructive-foreground: hsl(0, 0%, 98%);
+    --border: hsl(220, 15%, 18%);
+    --input: hsl(220, 15%, 14%);
+    --ring: hsl(142, 71%, 45%);
+    --radius: 0.75rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================
+   BASE STYLES
+   ========================================== */
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+/* ==========================================
+   PREMIUM GRADIENT & GLASS UTILITIES
+   ========================================== */
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(160, 60%, 35%));
+  }
+
+  .gradient-danger {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+  }
+
+  .gradient-sidebar {
+    background: linear-gradient(180deg, hsl(220, 22%, 8%) 0%, hsl(220, 18%, 6%) 100%);
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 0 40px rgba(34, 197, 94, 0.08);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.35), 0 0 60px rgba(239, 68, 68, 0.15);
+  }
+
+  .glow-red-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(142, 71%, 55%), hsl(160, 70%, 45%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .surface {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+@layer utilities {
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(239, 68, 68, 0.7), 0 0 80px rgba(239, 68, 68, 0.35);
+    }
+  }
+
+  @keyframes float-up {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes ping-slow {
+    0% { transform: scale(1); opacity: 1; }
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .animate-float-up {
+    animation: float-up 0.5s ease-out forwards;
+  }
+
+  .animate-ping-slow {
+    animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+/* ==========================================
+   PWA SAFE AREA (iPhone X+)
+   ========================================== */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ==========================================
+   COMPONENT STYLES
+   ========================================== */
+@layer components {
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    color: var(--muted-foreground);
+    transition: all 0.2s;
+  }
+  .nav-item.active {
+    color: var(--primary);
+    background: rgba(34, 197, 94, 0.1);
+  }
+  .nav-item:hover:not(.active) {
+    color: var(--foreground);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .status-paid {
+    background: rgba(20, 83, 45, 0.5);
+    color: hsl(142, 69%, 58%);
+    border-color: rgba(20, 83, 45, 0.7);
+  }
+  .status-unpaid {
+    background: rgba(113, 63, 18, 0.5);
+    color: hsl(38, 92%, 50%);
+    border-color: rgba(113, 63, 18, 0.7);
+  }
+  .status-overdue {
+    background: rgba(127, 29, 29, 0.5);
+    color: hsl(0, 91%, 71%);
+    border-color: rgba(127, 29, 29, 0.7);
+  }
+
+  .cat-duka {
+    background: rgba(31, 41, 55, 0.8);
+    color: hsl(210, 20%, 80%);
+    border-color: rgba(55, 65, 81, 0.7);
+  }
+  .cat-pengumuman {
+    background: rgba(23, 37, 84, 0.8);
+    color: hsl(213, 94%, 68%);
+    border-color: rgba(30, 64, 175, 0.5);
+  }
+  .cat-kegiatan {
+    background: rgba(46, 16, 101, 0.8);
+    color: hsl(271, 91%, 65%);
+    border-color: rgba(109, 40, 217, 0.5);
+  }
+  .cat-lainnya {
+    background: rgba(67, 20, 7, 0.8);
+    color: hsl(25, 95%, 53%);
+    border-color: rgba(154, 52, 18, 0.5);
+  }
 }

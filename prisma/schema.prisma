@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id          String     @id @default(cuid())
+  name        String
+  email       String     @unique
+  password    String
+  phone       String?
+  address     String?    // "Blok A No. 12"
+  houseNumber String?    // "A-12"
+  role        Role       @default(WARGA)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  iplPayments       IplPayment[]
+  panicAlerts       PanicAlert[]
+  communityEvents   CommunityEvent[]
+  pushSubscriptions PushSubscription[]
+
+  @@map("users")
+}
+
+enum Role {
+  WARGA
+  PETUGAS_SAMPAH
+  ADMIN
+}
+
+// ============================================================
+// IPL (IURAN PENGANGKUTAN SAMPAH)
+// ============================================================
+
+model IplPayment {
+  id            String        @id @default(cuid())
+  userId        String
+  amount        Int           // dalam rupiah (contoh: 30000)
+  month         Int           // 1-12
+  year          Int
+  status        PaymentStatus @default(UNPAID)
+  paymentDate   DateTime?
+  receiptNumber String?       // "WK-2025-08-0001" mock receipt
+  method        String?       // "MOCK_TRANSFER"
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+  @@map("ipl_payments")
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  OVERDUE
+}
+
+// ============================================================
+// PANIC BUTTON / ALERT DARURAT
+// ============================================================
+
+model PanicAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  triggeredAt DateTime  @default(now())
+  resolvedAt  DateTime?
+  isResolved  Boolean   @default(false)
+  note        String?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("panic_alerts")
+}
+
+// ============================================================
+// INFO EVENT / PENGUMUMAN WARGA
+// ============================================================
+
+model CommunityEvent {
+  id        String        @id @default(cuid())
+  authorId  String
+  title     String
+  content   String        @db.Text
+  category  EventCategory
+  eventDate DateTime?     // tanggal acara (opsional)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("community_events")
+}
+
+enum EventCategory {
+  DUKA_CITA
+  PENGUMUMAN
+  KEGIATAN
+  LAINNYA
+}
+
+// ============================================================
+// CCTV CAMERAS
+// ============================================================
+
+model CctvCamera {
+  id         String   @id @default(cuid())
+  name       String   // "Gerbang Utama"
+  location   String   // "Depan pos satpam"
+  youtubeUrl String   // YouTube embed URL
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("cctv_cameras")
+}
+
+// ============================================================
+// WEB PUSH SUBSCRIPTIONS
+// ============================================================
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
