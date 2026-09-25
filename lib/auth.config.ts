@@ -1,6 +1,6 @@
 // auth.config.ts — Edge-compatible auth configuration
 // Tidak mengandung Prisma/pg yang memerlukan Node.js native modules
-// Digunakan oleh middleware.ts yang berjalan di Edge Runtime
+// Digunakan oleh proxy.ts yang berjalan di Node.js Runtime (Next.js 16)
 
 import type { NextAuthConfig } from "next-auth";
 
@@ -34,6 +34,7 @@ export const authConfig = {
     },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      const isLandingPage = nextUrl.pathname === "/";
       const isAuthPage = nextUrl.pathname.startsWith("/login");
       const isAdminPage = nextUrl.pathname.startsWith("/admin");
       const isApiAuth = nextUrl.pathname.startsWith("/api/auth");
@@ -44,6 +45,12 @@ export const authConfig = {
         nextUrl.pathname === "/sw.js";
 
       if (isApiAuth || isPublicApi) return true;
+
+      // Landing page: public for guests, redirect to dashboard if logged in
+      if (isLandingPage) {
+        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
+        return true;
+      }
 
       if (isLoggedIn && isAuthPage)
         return Response.redirect(new URL("/dashboard", nextUrl));

@@ -2,28 +2,28 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
-  CreditCard,
-  Camera,
+  Megaphone,
   AlertTriangle,
+  Wallet,
+  Camera,
   CalendarDays,
-  Home,
-  TrendingUp,
-  CheckCircle2,
+  MapPin,
   Clock,
-  AlertCircle,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 async function getDashboardData(userId: string) {
-  const [iplSummary, recentEvents, lastPanic] = await Promise.all([
-    prisma.iplPayment.findMany({
-      where: { userId },
-      orderBy: [{ year: "desc" }, { month: "desc" }],
+  const [recentEvents, upcomingEvents, lastPanic] = await Promise.all([
+    prisma.communityEvent.findMany({
+      orderBy: { createdAt: "desc" },
       take: 3,
+      include: { author: { select: { name: true } } },
     }),
     prisma.communityEvent.findMany({
+      where: { category: "KEGIATAN" },
       orderBy: { createdAt: "desc" },
       take: 3,
       include: { author: { select: { name: true } } },
@@ -34,244 +34,529 @@ async function getDashboardData(userId: string) {
     }),
   ]);
 
-  const unpaidCount = iplSummary.filter((p) => p.status !== "PAID").length;
-
-  return { iplSummary, recentEvents, lastPanic, unpaidCount };
+  return { recentEvents, upcomingEvents, lastPanic };
 }
 
-const categoryConfig = {
-  DUKA_CITA: { label: "Duka Cita", emoji: "🕌", class: "cat-duka" },
-  PENGUMUMAN: { label: "Pengumuman", emoji: "📣", class: "cat-pengumuman" },
-  KEGIATAN: { label: "Kegiatan", emoji: "🎉", class: "cat-kegiatan" },
-  LAINNYA: { label: "Lainnya", emoji: "📋", class: "cat-lainnya" },
-};
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 11) return "Selamat Pagi";
+  if (hour < 15) return "Selamat Siang";
+  if (hour < 18) return "Selamat Sore";
+  return "Selamat Malam";
+}
 
-const statusConfig = {
-  PAID: { label: "Lunas", icon: CheckCircle2, class: "status-paid" },
-  UNPAID: { label: "Belum Bayar", icon: Clock, class: "status-unpaid" },
-  OVERDUE: { label: "Terlambat", icon: AlertCircle, class: "status-overdue" },
-};
-
-const monthNames = [
-  "", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+/* ── Service card definitions ───────────────────────────────────── */
+const services = [
+  {
+    href: "/dashboard/event",
+    label: "Informasi\nEvent Warga",
+    desc: "Lihat dan bagikan informasi kegiatan warga",
+    iconBg: "#dbeafe",
+    iconColor: "#2563eb",
+    arrowBg: "#eff6ff",
+    arrowColor: "#2563eb",
+    Icon: Megaphone,
+  },
+  {
+    href: "/dashboard/panic",
+    label: "Panic Button",
+    desc: "Laporkan keadaan darurat dengan cepat",
+    iconBg: "#fee2e2",
+    iconColor: "#dc2626",
+    arrowBg: "#fff1f2",
+    arrowColor: "#dc2626",
+    Icon: AlertTriangle,
+  },
+  {
+    href: "/dashboard/ipl",
+    label: "Bayar Iuran",
+    desc: "Kelola dan bayar iuran warga dengan mudah",
+    iconBg: "#dcfce7",
+    iconColor: "#16a34a",
+    arrowBg: "#f0fdf4",
+    arrowColor: "#16a34a",
+    Icon: Wallet,
+  },
+  {
+    href: "/dashboard/cctv",
+    label: "Live CCTV",
+    desc: "Pantau keamanan lingkungan secara real-time",
+    iconBg: "#ede9fe",
+    iconColor: "#7c3aed",
+    arrowBg: "#f5f3ff",
+    arrowColor: "#7c3aed",
+    Icon: Camera,
+  },
 ];
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { iplSummary, recentEvents, lastPanic, unpaidCount } =
+  const { recentEvents, upcomingEvents, lastPanic } =
     await getDashboardData(session.user.id);
 
-  const quickActions = [
-    {
-      href: "/dashboard/ipl",
-      label: "Bayar IPL",
-      icon: CreditCard,
-      color: "from-green-600 to-emerald-700",
-      badge: unpaidCount > 0 ? unpaidCount : null,
-    },
-    {
-      href: "/dashboard/cctv",
-      label: "Live CCTV",
-      icon: Camera,
-      color: "from-blue-600 to-cyan-700",
-      badge: null,
-    },
-    {
-      href: "/dashboard/panic",
-      label: "Darurat",
-      icon: AlertTriangle,
-      color: "from-red-600 to-rose-700",
-      badge: null,
-    },
-    {
-      href: "/dashboard/event",
-      label: "Event Warga",
-      icon: CalendarDays,
-      color: "from-purple-600 to-violet-700",
-      badge: null,
-    },
-  ];
+  const greeting = getGreeting();
+  const userName = session.user.name ?? "Warga";
+  // Display name: use role-aware label for the greeting
+  const displayName =
+    session.user.role === "ADMIN"
+      ? "Bapak/Ibu RT 03"
+      : userName.split(" ").slice(0, 2).join(" ");
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="animate-float-up">
-        <div className="flex items-center gap-3 mb-1">
-          <Home className="w-5 h-5 text-primary" />
-          <span className="text-sm text-muted-foreground">Beranda</span>
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Halo, {session.user.name?.split(" ")[0]}! 👋
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {session.user.address ?? "Selamat datang di WargaKu"} ·{" "}
-          {format(new Date(), "EEEE, dd MMMM yyyy", { locale: idLocale })}
-        </p>
-      </div>
+    <>
+      <style>{`
+        /* ── Dashboard page light styles ── */
+        .dp-root {
+          background: #f5f8fc;
+          min-height: 100%;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          color: #0f172a;
+          animation: dpFadeUp 0.4s ease-out both;
+        }
+        @keyframes dpFadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
 
-      {/* Active Panic Alert Banner */}
-      {lastPanic && (
-        <div className="surface border-red-800/50 bg-red-950/30 p-4 rounded-xl flex items-start gap-3 animate-float-up">
-          <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center flex-shrink-0 glow-red-pulse">
-            <AlertTriangle className="w-5 h-5 text-white" />
+        /* ── Hero header ── */
+        .dp-hero {
+          background: linear-gradient(160deg, #dbeafe 0%, #eff6ff 60%, #f5f8fc 100%);
+          padding: 20px 20px 0;
+          position: relative;
+          overflow: hidden;
+        }
+        .dp-hero-inner {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .dp-hero-text { flex: 1; padding-bottom: 20px; }
+        .dp-hero-greeting {
+          font-size: 22px;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1.25;
+          margin: 0 0 6px;
+        }
+        .dp-hero-sub {
+          font-size: 13px;
+          color: #64748b;
+          line-height: 1.5;
+          margin: 0;
+        }
+        .dp-hero-img {
+          width: 150px;
+          flex-shrink: 0;
+          align-self: flex-end;
+        }
+        .dp-hero-img img {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+
+        /* ── Panic banner ── */
+        .dp-panic-banner {
+          margin: 14px 16px 0;
+          background: #fef2f2;
+          border: 1.5px solid #fecaca;
+          border-radius: 14px;
+          padding: 12px 16px;
+          display: flex; align-items: flex-start; gap: 12px;
+        }
+        .dp-panic-icon {
+          width: 38px; height: 38px;
+          border-radius: 10px;
+          background: #dc2626;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          animation: panicPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes panicPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
+          50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+        }
+        .dp-panic-title { font-weight: 700; color: #dc2626; font-size: 13.5px; }
+        .dp-panic-body { font-size: 12.5px; color: #64748b; margin-top: 2px; line-height: 1.4; }
+        .dp-panic-link { font-size: 12px; color: #dc2626; font-weight: 600; text-decoration: none; margin-top: 4px; display: inline-block; }
+
+        /* ── Section header ── */
+        .dp-section {
+          padding: 22px 20px 0;
+        }
+        .dp-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .dp-section-title {
+          font-size: 17px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .dp-section-link {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #2563eb;
+          text-decoration: none;
+          display: flex; align-items: center; gap: 2px;
+        }
+        .dp-section-link:hover { opacity: 0.8; }
+
+        /* ── Service grid ── */
+        .dp-services-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .dp-service-card {
+          background: #ffffff;
+          border: 1.5px solid #e8eef6;
+          border-radius: 18px;
+          padding: 16px;
+          text-decoration: none;
+          color: inherit;
+          display: block;
+          position: relative;
+          transition: transform 0.18s, box-shadow 0.18s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .dp-service-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+        .dp-service-card:active { transform: translateY(0); }
+        .dp-service-card-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .dp-service-icon {
+          width: 46px; height: 46px;
+          border-radius: 13px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .dp-service-arrow {
+          width: 28px; height: 28px;
+          border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .dp-service-label {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #0f172a;
+          line-height: 1.3;
+          margin: 0 0 5px;
+          white-space: pre-line;
+        }
+        .dp-service-desc {
+          font-size: 11.5px;
+          color: #64748b;
+          line-height: 1.45;
+          margin: 0;
+        }
+
+        /* ── Announcement carousel ── */
+        .dp-announce-card {
+          background: #ffffff;
+          border: 1.5px solid #e8eef6;
+          border-radius: 18px;
+          padding: 16px 18px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          text-decoration: none;
+          color: inherit;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          transition: transform 0.15s;
+        }
+        .dp-announce-card:hover { transform: translateY(-1px); }
+        .dp-announce-icon-wrap {
+          width: 50px; height: 50px;
+          border-radius: 14px;
+          background: #dbeafe;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .dp-announce-title {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 4px;
+        }
+        .dp-announce-body {
+          font-size: 12px;
+          color: #64748b;
+          margin: 0;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .dp-announce-dots {
+          display: flex; gap: 5px;
+          justify-content: center;
+          margin-top: 10px;
+        }
+        .dp-announce-dot {
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          background: #e2e8f0;
+        }
+        .dp-announce-dot.active {
+          background: #2563eb;
+          width: 18px;
+          border-radius: 4px;
+        }
+
+        /* ── Event list ── */
+        .dp-event-card {
+          background: #ffffff;
+          border: 1.5px solid #e8eef6;
+          border-radius: 18px;
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          text-decoration: none;
+          color: inherit;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          transition: transform 0.15s;
+        }
+        .dp-event-card:hover { transform: translateY(-1px); }
+        .dp-event-icon {
+          width: 46px; height: 46px;
+          border-radius: 13px;
+          background: #dcfce7;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .dp-event-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 3px;
+        }
+        .dp-event-author {
+          font-size: 11.5px;
+          color: #64748b;
+          margin: 0 0 6px;
+        }
+        .dp-event-meta {
+          display: flex; flex-direction: column; gap: 2px;
+        }
+        .dp-event-meta-row {
+          display: flex; align-items: center; gap: 5px;
+          font-size: 11.5px; color: #475569;
+        }
+        .dp-event-badge {
+          margin-left: auto;
+          flex-shrink: 0;
+          background: #dcfce7;
+          color: #16a34a;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 9px;
+          border-radius: 20px;
+          white-space: nowrap;
+        }
+
+        /* ── Empty state ── */
+        .dp-empty {
+          background: #fff;
+          border: 1.5px solid #e8eef6;
+          border-radius: 18px;
+          padding: 32px 16px;
+          text-align: center;
+          color: #94a3b8;
+          font-size: 13px;
+        }
+        .dp-bottom-pad { height: 24px; }
+      `}</style>
+
+      <div className="dp-root">
+        {/* ── Hero ── */}
+        <div className="dp-hero">
+          <div className="dp-hero-inner">
+            <div className="dp-hero-text">
+              <h1 className="dp-hero-greeting">
+                {greeting},<br />{displayName}
+              </h1>
+              <p className="dp-hero-sub">
+                Semoga hari ini penuh dengan<br />hal-hal baik untuk kita semua.
+              </p>
+            </div>
+            <div className="dp-hero-img">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/33.png" alt="Lingkungan warga" />
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-red-400">⚠️ Alert Darurat Aktif!</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {lastPanic.user.name} membutuhkan bantuan di{" "}
-              <span className="text-foreground font-medium">
-                {lastPanic.user.address}
-              </span>
-            </p>
-            <Link
-              href="/dashboard/panic"
-              className="text-xs text-red-400 underline mt-1 inline-block"
-            >
-              Lihat detail →
+        </div>
+
+        {/* ── Panic Banner (conditional) ── */}
+        {lastPanic && (
+          <div className="dp-panic-banner">
+            <div className="dp-panic-icon">
+              <AlertTriangle size={18} color="white" />
+            </div>
+            <div>
+              <p className="dp-panic-title">⚠️ Alert Darurat Aktif!</p>
+              <p className="dp-panic-body">
+                {lastPanic.user.name} membutuhkan bantuan di{" "}
+                <strong>{lastPanic.user.address}</strong>
+              </p>
+              <Link href="/dashboard/panic" className="dp-panic-link">
+                Lihat detail →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Layanan Utama ── */}
+        <div className="dp-section">
+          <div className="dp-section-header">
+            <h2 className="dp-section-title">Layanan Utama</h2>
+            <Link href="/dashboard/event" className="dp-section-link">
+              Lihat Semua <ChevronRight size={14} />
             </Link>
           </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Menu Utama
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="relative surface p-5 flex flex-col items-start gap-3 hover-lift group overflow-hidden"
-              >
-                {/* Gradient background on hover */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                />
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center shadow-lg`}
-                >
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">
-                    {action.label}
-                  </p>
-                </div>
-                {action.badge !== null && (
-                  <span className="absolute top-3 right-3 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                    {action.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* IPL Summary */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Status IPL Terbaru
-          </h2>
-          <Link
-            href="/dashboard/ipl"
-            className="text-xs text-primary hover:underline"
-          >
-            Lihat Semua →
-          </Link>
-        </div>
-        <div className="surface divide-y divide-border overflow-hidden">
-          {iplSummary.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              Belum ada data IPL
-            </div>
-          ) : (
-            iplSummary.map((payment) => {
-              const cfg = statusConfig[payment.status];
-              const StatusIcon = cfg.icon;
+          <div className="dp-services-grid">
+            {services.map((svc) => {
+              const Icon = svc.Icon;
               return (
-                <div
-                  key={payment.id}
-                  className="flex items-center justify-between p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-green-950 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-green-500" />
+                <Link key={svc.href} href={svc.href} className="dp-service-card">
+                  <div className="dp-service-card-top">
+                    <div
+                      className="dp-service-icon"
+                      style={{ background: svc.iconBg }}
+                    >
+                      <Icon size={22} color={svc.iconColor} strokeWidth={2} />
                     </div>
-                    <div>
-                      <p className="font-medium text-sm text-foreground">
-                        {monthNames[payment.month]} {payment.year}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Rp {payment.amount.toLocaleString("id-ID")}
-                      </p>
+                    <div
+                      className="dp-service-arrow"
+                      style={{ background: svc.arrowBg }}
+                    >
+                      <ChevronRight size={14} color={svc.arrowColor} strokeWidth={2.5} />
                     </div>
                   </div>
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.class}`}
-                  >
-                    <StatusIcon className="w-3 h-3" />
-                    {cfg.label}
-                  </span>
-                </div>
+                  <p className="dp-service-label">{svc.label}</p>
+                  <p className="dp-service-desc">{svc.desc}</p>
+                </Link>
               );
-            })
+            })}
+          </div>
+        </div>
+
+        {/* ── Pengumuman Terbaru ── */}
+        <div className="dp-section">
+          <div className="dp-section-header">
+            <h2 className="dp-section-title">
+              Pengumuman Terbaru
+            </h2>
+          </div>
+          {recentEvents.length === 0 ? (
+            <div className="dp-empty">Belum ada pengumuman</div>
+          ) : (
+            <>
+              <Link href="/dashboard/event" className="dp-announce-card">
+                <div className="dp-announce-icon-wrap">
+                  <Megaphone size={24} color="#2563eb" strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="dp-announce-title">{recentEvents[0].title}</p>
+                  <p className="dp-announce-body">
+                    {recentEvents[0].content}
+                  </p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
+              </Link>
+              {/* Dots indicator */}
+              <div className="dp-announce-dots">
+                {recentEvents.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`dp-announce-dot${i === 0 ? " active" : ""}`}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
-      </div>
 
-      {/* Recent Events */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Pengumuman Terbaru
-          </h2>
-          <Link
-            href="/dashboard/event"
-            className="text-xs text-primary hover:underline"
-          >
-            Lihat Semua →
-          </Link>
+        {/* ── Event Mendatang ── */}
+        <div className="dp-section">
+          <div className="dp-section-header">
+            <h2 className="dp-section-title">
+              <CalendarDays size={20} color="#2563eb" />
+              Event Mendatang
+            </h2>
+            <Link href="/dashboard/event" className="dp-section-link">
+              Lihat Semua <ChevronRight size={14} />
+            </Link>
+          </div>
+
+          {upcomingEvents.length === 0 ? (
+            <div className="dp-empty">Belum ada event mendatang</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {upcomingEvents.map((event) => {
+                const daysDiff = differenceInDays(
+                  new Date(),
+                  new Date(event.createdAt)
+                );
+                const badgeText =
+                  daysDiff === 0
+                    ? "Hari ini"
+                    : daysDiff > 0
+                    ? `+${daysDiff} hari`
+                    : `${Math.abs(daysDiff)} hari lagi`;
+
+                return (
+                  <Link
+                    key={event.id}
+                    href="/dashboard/event"
+                    className="dp-event-card"
+                  >
+                    <div className="dp-event-icon">
+                      <CalendarDays size={22} color="#16a34a" strokeWidth={2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p className="dp-event-title">{event.title}</p>
+                      <p className="dp-event-author">{event.author.name}</p>
+                      <div className="dp-event-meta">
+                        <div className="dp-event-meta-row">
+                          <Clock size={11} color="#94a3b8" />
+                          <span>
+                            {format(new Date(event.createdAt), "EEEE, HH:mm 'WIB'", {
+                              locale: idLocale,
+                            })}
+                          </span>
+                        </div>
+                        <div className="dp-event-meta-row">
+                          <MapPin size={11} color="#94a3b8" />
+                          <span>Taman Utama Komplek</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="dp-event-badge">{badgeText}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <div className="space-y-2">
-          {recentEvents.map((event) => {
-            const cat = categoryConfig[event.category];
-            return (
-              <Link
-                href="/dashboard/event"
-                key={event.id}
-                className="surface p-4 flex items-start gap-3 hover-lift block"
-              >
-                <span className="text-2xl flex-shrink-0 mt-0.5">{cat.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-foreground truncate">
-                    {event.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {event.author.name} ·{" "}
-                    {format(new Date(event.createdAt), "dd MMM", {
-                      locale: idLocale,
-                    })}
-                  </p>
-                </div>
-                <span
-                  className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 ${cat.class}`}
-                >
-                  {cat.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+
+        <div className="dp-bottom-pad" />
       </div>
-    </div>
+    </>
   );
 }

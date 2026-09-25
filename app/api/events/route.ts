@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const eventSchema = z.object({
-  title: z.string().min(3).max(200),
-  content: z.string().min(10).max(5000),
-  category: z.enum(["DUKA_CITA", "PENGUMUMAN", "KEGIATAN", "LAINNYA"]),
+  title: z.string().min(1, "Judul event wajib diisi").max(200, "Judul maksimal 200 karakter"),
+  content: z.string().min(1, "Konten/deskripsi wajib diisi").max(5000, "Konten maksimal 5000 karakter"),
+  category: z.enum(["DUKA_CITA", "PENGUMUMAN", "KEGIATAN", "LAINNYA"]).default("KEGIATAN"),
   eventDate: z.string().nullable().optional(),
 });
 
@@ -25,7 +25,10 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = eventSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const firstMessage =
+      Object.values(fieldErrors).flat()[0] || "Format data pengumuman tidak valid";
+    return NextResponse.json({ error: firstMessage }, { status: 400 });
   }
 
   const { title, content, category, eventDate } = parsed.data;

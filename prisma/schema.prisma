@@ -53,8 +53,11 @@ model IplPayment {
   status        PaymentStatus @default(UNPAID)
   paymentDate   DateTime?
   receiptNumber String?       // "WK-2025-08-0001" mock receipt
-  method        String?       // "MOCK_TRANSFER"
+  method        String?       // "MOCK_TRANSFER" | "QRIS"
   note          String?
+  xenditQrId    String?       @unique
+  qrString      String?       @db.Text
+  expiresAt     DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
