@@ -11,6 +11,40 @@ datasource db {
 }
 
 // ============================================================
+// UNIT HUNIAN
+// ============================================================
+
+model HouseholdUnit {
+  id         String   @id @default(cuid())
+  unitNumber String   @unique  // "02-01", "A-01", dst
+  address    String?           // deskripsi opsional: "Jalur 2 No. 1"
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  members  User[]
+  payments IplPayment[]
+
+  @@map("household_units")
+}
+
+// ============================================================
+// IPL CONFIG — nominal IPL configurable + audit trail
+// ============================================================
+
+model IplConfig {
+  id            String   @id @default(cuid())
+  amount        Int               // nominal IPL dalam rupiah
+  effectiveFrom DateTime          // berlaku mulai tanggal ini
+  note          String?           // alasan perubahan (opsional)
+  createdAt     DateTime @default(now())
+  createdById   String            // admin yang mengubah
+
+  createdBy User @relation("IplConfigCreatedBy", fields: [createdById], references: [id])
+
+  @@map("ipl_configs")
+}
+
+// ============================================================
 // USER & AUTH
 // ============================================================
 
@@ -20,16 +54,20 @@ model User {
   email       String     @unique
   password    String
   phone       String?
-  address     String?    // "Blok A No. 12"
-  houseNumber String?    // "A-12"
+  address     String?    // alamat teks bebas saat daftar
+  houseNumber String?    // legacy field — superseded oleh householdId
   role        Role       @default(WARGA)
+  status      UserStatus @default(PENDING)
+  householdId String?    // null sampai admin assign ke unit
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  iplPayments       IplPayment[]
+  household         HouseholdUnit?  @relation(fields: [householdId], references: [id])
   panicAlerts       PanicAlert[]
   communityEvents   CommunityEvent[]
   pushSubscriptions PushSubscription[]
+  paidIplPayments   IplPayment[]    @relation("PaymentPaidBy")
+  createdIplConfigs IplConfig[]     @relation("IplConfigCreatedBy")
 
   @@map("users")
 }
@@ -40,30 +78,36 @@ enum Role {
   ADMIN
 }
 
+enum UserStatus {
+  PENDING    // baru daftar, menunggu verifikasi admin
+  ACTIVE     // sudah diverifikasi + di-assign ke unit
+  SUSPENDED  // dinonaktifkan
+}
+
 // ============================================================
 // IPL (IURAN PENGANGKUTAN SAMPAH)
 // ============================================================
 
 model IplPayment {
   id            String        @id @default(cuid())
-  userId        String
-  amount        Int           // dalam rupiah (contoh: 30000)
-  month         Int           // 1-12
+  householdId   String                                  // per unit, bukan per orang
+  paidByUserId  String?                                 // siapa yang membayar (audit trail)
+  amount        Int                                     // snapshot dari IplConfig.amount saat generate
+  month         Int                                     // 1-12
   year          Int
   status        PaymentStatus @default(UNPAID)
+  dueDate       DateTime?                               // tanggal jatuh tempo (tgl 10 bulan tsb)
   paymentDate   DateTime?
-  receiptNumber String?       // "WK-2025-08-0001" mock receipt
-  method        String?       // "MOCK_TRANSFER" | "QRIS"
+  receiptNumber String?
+  method        String?                                 // "TUNAI" | "TRANSFER" | "QRIS" | "LAINNYA"
   note          String?
-  xenditQrId    String?       @unique
-  qrString      String?       @db.Text
-  expiresAt     DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household HouseholdUnit @relation(fields: [householdId], references: [id])
+  paidBy    User?         @relation("PaymentPaidBy", fields: [paidByUserId], references: [id])
 
-  @@unique([userId, month, year])
+  @@unique([householdId, month, year])
   @@map("ipl_payments")
 }
 
@@ -85,7 +129,7 @@ model PanicAlert {
   isResolved  Boolean   @default(false)
   note        String?
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("panic_alerts")
 }
@@ -95,16 +139,17 @@ model PanicAlert {
 // ============================================================
 
 model CommunityEvent {
-  id        String        @id @default(cuid())
-  authorId  String
-  title     String
-  content   String        @db.Text
-  category  EventCategory
-  eventDate DateTime?     // tanggal acara (opsional)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  authorId   String
+  title      String
+  content    String        @db.Text
+  category   EventCategory
+  eventDate  DateTime?     // tanggal acara (opsional)
+  archivedAt DateTime?     // null = aktif; terisi = diarsipkan oleh admin
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
-  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("community_events")
 }
@@ -146,7 +191,7 @@ model PushSubscription {
   userAgent String?
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("push_subscriptions")
 }

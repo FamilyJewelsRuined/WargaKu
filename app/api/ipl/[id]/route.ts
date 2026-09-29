@@ -18,9 +18,18 @@ export async function PATCH(
 
   const payment = await prisma.iplPayment.findUnique({ where: { id } });
   if (!payment) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (payment.userId !== session.user.id && session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Validasi akses: cek apakah user berada di unit yang sama dengan tagihan
+  if (session.user.role !== "ADMIN") {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { householdId: true },
+    });
+    if (!currentUser?.householdId || currentUser.householdId !== payment.householdId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
+
   if (payment.status === "PAID") {
     return NextResponse.json({ success: true, payment, alreadyPaid: true });
   }
@@ -35,6 +44,7 @@ export async function PATCH(
       paymentDate: new Date(),
       receiptNumber,
       method: typeof method === "string" && method ? method : "QRIS",
+      paidByUserId: session.user.id, // audit trail: siapa yang membayar
     },
   });
 

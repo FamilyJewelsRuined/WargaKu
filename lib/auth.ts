@@ -36,14 +36,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) return null;
 
+        if (user.status === "SUSPENDED") {
+          throw new Error("Akun Anda telah dinonaktifkan oleh administrator.");
+        }
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
-          address: user.address,
-          houseNumber: user.houseNumber,
-          phone: user.phone,
+          status: user.status,
+          householdId: user.householdId,
+          address: user.address ?? undefined,
+          houseNumber: user.houseNumber ?? undefined,
+          phone: user.phone ?? undefined,
         };
       },
     }),

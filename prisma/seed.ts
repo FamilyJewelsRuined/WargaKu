@@ -11,16 +11,30 @@ async function main() {
   console.log("🌱 Seeding database WargaKu...");
 
   // =========================================================
-  // HAPUS DATA LAMA
+  // HAPUS DATA LAMA (urutan penting: FK constraints)
   // =========================================================
   await prisma.pushSubscription.deleteMany();
   await prisma.panicAlert.deleteMany();
   await prisma.communityEvent.deleteMany();
   await prisma.iplPayment.deleteMany();
-  await prisma.cctvCamera.deleteMany();
+  await prisma.iplConfig.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.householdUnit.deleteMany();
+  await prisma.cctvCamera.deleteMany();
 
   console.log("🗑️  Data lama dihapus");
+
+  // =========================================================
+  // BUAT UNIT HUNIAN
+  // =========================================================
+  const unitA01 = await prisma.householdUnit.create({ data: { unitNumber: "A-01", address: "Blok A No. 1 (Rumah RT)" } });
+  const unitA02 = await prisma.householdUnit.create({ data: { unitNumber: "A-02", address: "Blok A No. 2" } });
+  const unitA03 = await prisma.householdUnit.create({ data: { unitNumber: "A-03", address: "Blok A No. 3" } });
+  const unitB01 = await prisma.householdUnit.create({ data: { unitNumber: "B-01", address: "Blok B No. 1" } });
+  const unitB02 = await prisma.householdUnit.create({ data: { unitNumber: "B-02", address: "Blok B No. 2" } });
+  const unitC05 = await prisma.householdUnit.create({ data: { unitNumber: "C-05", address: "Blok C No. 5" } });
+
+  console.log("🏠 Unit hunian dibuat");
 
   // =========================================================
   // HASH PASSWORD
@@ -28,7 +42,7 @@ async function main() {
   const hashPassword = (pwd: string) => bcrypt.hashSync(pwd, 10);
 
   // =========================================================
-  // BUAT AKUN DEMO
+  // BUAT AKUN DEMO (semua ACTIVE, sudah di-assign ke unit)
   // =========================================================
   const admin = await prisma.user.create({
     data: {
@@ -39,10 +53,12 @@ async function main() {
       address: "Blok A No. 1 (Rumah RT)",
       houseNumber: "A-01",
       role: "ADMIN",
+      status: "ACTIVE",
+      householdId: unitA01.id,
     },
   });
 
-  const petugas = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: "Pak Rudi (Petugas Sampah)",
       email: "petugas@wargaku.demo",
@@ -51,6 +67,8 @@ async function main() {
       address: "Blok C No. 5",
       houseNumber: "C-05",
       role: "PETUGAS_SAMPAH",
+      status: "ACTIVE",
+      householdId: unitC05.id,
     },
   });
 
@@ -63,6 +81,8 @@ async function main() {
       address: "Blok A No. 2",
       houseNumber: "A-02",
       role: "WARGA",
+      status: "ACTIVE",
+      householdId: unitA02.id,
     },
   });
 
@@ -75,6 +95,8 @@ async function main() {
       address: "Blok A No. 3",
       houseNumber: "A-03",
       role: "WARGA",
+      status: "ACTIVE",
+      householdId: unitA03.id,
     },
   });
 
@@ -87,6 +109,8 @@ async function main() {
       address: "Blok B No. 1",
       houseNumber: "B-01",
       role: "WARGA",
+      status: "ACTIVE",
+      householdId: unitB01.id,
     },
   });
 
@@ -99,10 +123,26 @@ async function main() {
       address: "Blok B No. 2",
       houseNumber: "B-02",
       role: "WARGA",
+      status: "ACTIVE",
+      householdId: unitB02.id,
     },
   });
 
-  console.log("👥 Akun demo dibuat:", { admin, petugas, budi, siti, ahmad, dewi });
+  console.log("👥 Akun demo dibuat");
+
+  // =========================================================
+  // IPL CONFIG — nominal awal
+  // =========================================================
+  await prisma.iplConfig.create({
+    data: {
+      amount: 30000,
+      effectiveFrom: new Date("2026-01-01"),
+      note: "Nominal IPL awal komplek",
+      createdById: admin.id,
+    },
+  });
+
+  console.log("💰 IPL Config dibuat (Rp 30.000)");
 
   // =========================================================
   // CCTV CAMERAS
@@ -139,41 +179,47 @@ async function main() {
   console.log("📹 CCTV cameras dibuat");
 
   // =========================================================
-  // IPL PAYMENTS (bulan Juli - September 2025)
+  // IPL PAYMENTS — per unit hunian, 3 bulan terakhir
   // =========================================================
-  const wargas = [budi, siti, ahmad, dewi];
+  const wargaUnits = [
+    { unit: unitA02, paidBy: budi },
+    { unit: unitA03, paidBy: siti },
+    { unit: unitB01, paidBy: ahmad },
+    { unit: unitB02, paidBy: dewi },
+  ];
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
   const iplData = [];
-  for (const warga of wargas) {
-    for (let m = currentMonth - 2; m <= currentMonth; m++) {
-      const month = m <= 0 ? m + 12 : m;
-      const year = m <= 0 ? currentYear - 1 : currentYear;
+  for (const { unit, paidBy } of wargaUnits) {
+    for (let offset = -2; offset <= 0; offset++) {
+      let month = currentMonth + offset;
+      let year = currentYear;
+      if (month <= 0) { month += 12; year -= 1; }
 
-      // Buat status bervariasi untuk demo
-      const isOldMonth = m < currentMonth;
+      // dueDate: tanggal 10 dari bulan tersebut
+      const dueDate = new Date(year, month - 1, 10);
+
+      const isOldMonth = offset < 0;
       const isPaid = isOldMonth ? Math.random() > 0.3 : Math.random() > 0.7;
-      const isOverdue = isOldMonth && !isPaid;
 
       iplData.push({
-        userId: warga.id,
+        householdId: unit.id,
+        paidByUserId: isPaid ? paidBy.id : null,
         amount: 30000,
         month,
         year,
-        status: isPaid
-          ? ("PAID" as const)
-          : isOverdue
-          ? ("OVERDUE" as const)
-          : ("UNPAID" as const),
+        dueDate,
+        status: isPaid ? ("PAID" as const) : ("UNPAID" as const),
         paymentDate: isPaid
-          ? new Date(year, month - 1, Math.floor(Math.random() * 20) + 1)
+          ? new Date(year, month - 1, Math.floor(Math.random() * 8) + 1)
           : null,
         receiptNumber: isPaid
           ? `WK-${year}-${String(month).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`
           : null,
-        method: isPaid ? "MOCK_TRANSFER" : null,
+        method: isPaid ? "TRANSFER" : null,
       });
     }
   }
@@ -200,7 +246,7 @@ async function main() {
         content:
           "Assalamu'alaikum Wr. Wb.\n\nDengan penuh kesedihan kami sampaikan bahwa Bapak Subagyo (Ayahanda dari Ibu Marlina - Blok C No. 3) telah berpulang ke Rahmatullah pada hari ini.\n\nRencana pemakaman: Besok pagi pukul 08.00 WIB.\nTahlilan & Yasin: Malam ini pukul 20.00 WIB di rumah duka Blok C No. 3.\n\nMohon do'a dan kehadiran warga komplek.\n\nInnalillahi wa inna ilaihi raji'un.",
         category: "DUKA_CITA",
-        eventDate: new Date(Date.now() + 86400000), // besok
+        eventDate: new Date(Date.now() + 86400000),
       },
       {
         authorId: siti.id,
@@ -248,9 +294,9 @@ async function main() {
   await prisma.panicAlert.create({
     data: {
       userId: siti.id,
-      triggeredAt: new Date(Date.now() - 3 * 86400000), // 3 hari lalu
+      triggeredAt: new Date(Date.now() - 3 * 86400000),
       isResolved: true,
-      resolvedAt: new Date(Date.now() - 3 * 86400000 + 900000), // 15 menit setelah
+      resolvedAt: new Date(Date.now() - 3 * 86400000 + 900000),
       note: "Situasi sudah aman. Terima kasih atas respon cepat warga.",
     },
   });
@@ -265,6 +311,9 @@ async function main() {
   console.log("  Warga 2   : siti@wargaku.demo / warga123");
   console.log("  Warga 3   : ahmad@wargaku.demo / warga123");
   console.log("  Warga 4   : dewi@wargaku.demo / warga123");
+  console.log("\n🏠 Unit Hunian:");
+  console.log("  A-01 (Admin RT), A-02 (Budi), A-03 (Siti)");
+  console.log("  B-01 (Ahmad), B-02 (Dewi), C-05 (Petugas)");
 }
 
 main()

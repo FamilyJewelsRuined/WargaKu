@@ -4,8 +4,15 @@
 
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
+import type { NextRequest } from "next/server";
 
-export const { auth: proxy } = NextAuth(authConfig);
+const { auth } = NextAuth(authConfig);
+
+export function proxy(request: NextRequest) {
+  return (auth as unknown as (req: NextRequest) => any)(request);
+}
+
+export default proxy;
 
 export const config = {
   matcher: [
@@ -22,4 +29,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon\\.ico|icons|manifest\\.json|sw\\.js|api/push/vapid-public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp4|pdf|txt|xml|woff2?)$).*)",
   ],
 };
-

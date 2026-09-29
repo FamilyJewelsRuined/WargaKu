@@ -19,31 +19,19 @@ export async function POST(
       return NextResponse.json({ error: "Tagihan tidak ditemukan" }, { status: 404 });
     }
 
-    if (payment.userId !== session.user.id) {
-      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+    // Validasi akses: cek apakah user berada di unit yang sama dengan tagihan (atau ADMIN)
+    if (session.user.role !== "ADMIN") {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { householdId: true },
+      });
+      if (!currentUser?.householdId || currentUser.householdId !== payment.householdId) {
+        return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+      }
     }
 
     if (payment.status === "PAID") {
       return NextResponse.json({ error: "Tagihan ini sudah lunas" }, { status: 400 });
-    }
-
-    // Periksa apakah sudah ada QR code aktif yang belum expired
-    const existingQrs: Array<{ qrString: string | null; expiresAt: Date | null }> =
-      await prisma.$queryRaw`
-        SELECT "qrString", "expiresAt" FROM "ipl_payments" WHERE id = ${payment.id} LIMIT 1
-      `;
-
-    if (
-      existingQrs.length > 0 &&
-      existingQrs[0].qrString &&
-      existingQrs[0].expiresAt &&
-      new Date(existingQrs[0].expiresAt) > new Date()
-    ) {
-      return NextResponse.json({
-        qrString: existingQrs[0].qrString,
-        expiresAt: new Date(existingQrs[0].expiresAt).toISOString(),
-        amount: payment.amount,
-      });
     }
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -67,8 +55,8 @@ export async function POST(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": authHeader,
+        Accept: "application/json",
+        Authorization: authHeader,
       },
       body: JSON.stringify({
         payment_type: "qris",
@@ -98,15 +86,6 @@ export async function POST(
         expiresAtDate = parsed;
       }
     }
-
-    // Simpan referensi QR ke database
-    await prisma.$executeRaw`
-      UPDATE "ipl_payments"
-      SET "xenditQrId" = ${data.transaction_id},
-          "qrString" = ${data.qr_string},
-          "expiresAt" = ${expiresAtDate}
-      WHERE id = ${payment.id}
-    `;
 
     return NextResponse.json({
       qrString: data.qr_string,

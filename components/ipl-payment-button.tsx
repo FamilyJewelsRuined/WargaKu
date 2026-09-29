@@ -48,14 +48,16 @@ export function IplPaymentButton({ paymentId }: { paymentId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          className="gradient-primary text-white text-xs font-semibold px-4 flex-shrink-0"
-        >
-          Bayar
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button
+            size="sm"
+            className="gradient-primary text-white text-xs font-semibold px-4 flex-shrink-0"
+          >
+            Bayar
+          </Button>
+        }
+      />
       <DialogContent className="bg-card border-border max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

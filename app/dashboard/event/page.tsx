@@ -23,7 +23,10 @@ export default async function EventPage({
   const { category } = await searchParams;
 
   const events = await prisma.communityEvent.findMany({
-    where: category ? { category: category as keyof typeof categoryLabels } : {},
+    where: {
+      archivedAt: null, // hanya tampilkan event yang belum diarsipkan
+      ...(category ? { category: category as keyof typeof categoryLabels } : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: { author: { select: { name: true, houseNumber: true } } },
   });

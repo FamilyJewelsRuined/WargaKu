@@ -1,7 +1,18 @@
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Shield, Home, LayoutDashboard, Users, CreditCard, AlertTriangle } from "lucide-react";
+import {
+  Shield,
+  Home,
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  AlertTriangle,
+  Megaphone,
+  UserCheck,
+  Building2,
+} from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -11,11 +22,23 @@ export default async function AdminLayout({
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") redirect("/dashboard");
 
+  const pendingCount = await prisma.user.count({
+    where: { status: "PENDING" },
+  });
+
   const navItems = [
-    { href: "/admin",        label: "Dashboard",   icon: LayoutDashboard },
-    { href: "/admin/warga",  label: "Warga",        icon: Users },
-    { href: "/admin/ipl",    label: "Laporan IPL",  icon: CreditCard },
-    { href: "/admin/alerts", label: "Panic Alerts", icon: AlertTriangle },
+    { href: "/admin",             label: "Dashboard",   icon: LayoutDashboard },
+    {
+      href: "/admin/pendaftaran",
+      label: "Pendaftaran",
+      icon: UserCheck,
+      badge: pendingCount > 0 ? pendingCount : undefined,
+    },
+    { href: "/admin/units",       label: "Unit Hunian", icon: Building2 },
+    { href: "/admin/warga",       label: "Warga",        icon: Users },
+    { href: "/admin/ipl",         label: "Laporan IPL",  icon: CreditCard },
+    { href: "/admin/alerts",      label: "Panic Alerts", icon: AlertTriangle },
+    { href: "/admin/events",      label: "Event",         icon: Megaphone },
   ];
 
   return (
@@ -105,6 +128,22 @@ export default async function AdminLayout({
             >
               <Icon size={14} />
               {item.label}
+              {item.badge !== undefined && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: 9999,
+                    background: "#fef3c7",
+                    color: "#b45309",
+                    border: "1px solid #fde68a",
+                    marginLeft: 2,
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import {
@@ -591,7 +592,7 @@ export default function LoginPage() {
           {/* ── Register link ── */}
           <p className="login-footer">
             Belum punya akun?
-            <a href="#">Daftar sekarang</a>
+            <Link href="/register">Daftar sekarang</Link>
           </p>
 
           {/* ── Demo Accounts (collapsible) ── */}

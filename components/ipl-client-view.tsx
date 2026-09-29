@@ -49,11 +49,13 @@ const monthShortNames = [
 
 interface PaymentItem {
   id: string;
-  userId: string;
+  householdId: string;     // diubah dari userId
+  paidByUserId: string | null;
   amount: number;
   month: number;
   year: number;
   status: "PAID" | "UNPAID" | "OVERDUE";
+  dueDate: string | null;  // untuk computed OVERDUE logic
   paymentDate: string | Date | null;
   receiptNumber: string | null;
   method: string | null;

@@ -18,11 +18,7 @@ export default async function AdminWargaPage() {
   const users = await prisma.user.findMany({
     orderBy: [{ role: "asc" }, { name: "asc" }],
     include: {
-      _count: {
-        select: {
-          iplPayments: { where: { status: { not: "PAID" } } },
-        },
-      },
+      household: { select: { unitNumber: true } },
     },
   });
 
@@ -47,10 +43,10 @@ export default async function AdminWargaPage() {
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left p-4 font-semibold text-muted-foreground">Nama</th>
-                <th className="text-left p-4 font-semibold text-muted-foreground hidden md:table-cell">No. Rumah</th>
+                <th className="text-left p-4 font-semibold text-muted-foreground hidden md:table-cell">Unit Hunian</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground hidden lg:table-cell">No. HP</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground">Role</th>
-                <th className="text-left p-4 font-semibold text-muted-foreground">IPL Belum Bayar</th>
+                <th className="text-left p-4 font-semibold text-muted-foreground">Status</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground hidden md:table-cell">Bergabung</th>
               </tr>
             </thead>
@@ -58,7 +54,6 @@ export default async function AdminWargaPage() {
               {users.map((user) => {
                 const role = roleConfig[user.role as keyof typeof roleConfig] ?? roleConfig.WARGA;
                 const RoleIcon = role.icon;
-                const unpaidCount = user._count.iplPayments;
 
                 return (
                   <tr key={user.id} className="hover:bg-white/2 transition-colors">
@@ -75,7 +70,7 @@ export default async function AdminWargaPage() {
                     </td>
                     <td className="p-4 hidden md:table-cell">
                       <span className="text-foreground font-medium">
-                        {user.houseNumber ?? "—"}
+                        {user.household?.unitNumber ?? "—"}
                       </span>
                     </td>
                     <td className="p-4 hidden lg:table-cell">
@@ -91,13 +86,13 @@ export default async function AdminWargaPage() {
                       </span>
                     </td>
                     <td className="p-4">
-                      {user.role === "WARGA" ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${unpaidCount > 0 ? "status-overdue" : "status-paid"}`}>
-                          {unpaidCount > 0 ? `${unpaidCount} belum bayar` : "Lunas semua"}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                        user.status === "PENDING" ? "text-yellow-400 bg-yellow-950 border-yellow-800/50" :
+                        user.status === "SUSPENDED" ? "text-red-400 bg-red-950 border-red-800/50" :
+                        "text-green-400 bg-green-950 border-green-800/50"
+                      }`}>
+                        {user.status === "PENDING" ? "Menunggu" : user.status === "SUSPENDED" ? "Dinonaktifkan" : "Aktif"}
+                      </span>
                     </td>
                     <td className="p-4 hidden md:table-cell text-xs text-muted-foreground">
                       {format(new Date(user.createdAt), "dd MMM yyyy", { locale: idLocale })}

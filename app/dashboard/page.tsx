@@ -16,7 +16,7 @@ import { format, differenceInDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 async function getDashboardData(userId: string) {
-  const [recentEvents, upcomingEvents, lastPanic] = await Promise.all([
+  const [recentEvents, upcomingEvents, activeAlerts] = await Promise.all([
     prisma.communityEvent.findMany({
       orderBy: { createdAt: "desc" },
       take: 3,
@@ -31,13 +31,15 @@ async function getDashboardData(userId: string) {
       take: 3,
       include: { author: { select: { name: true } } },
     }),
-    prisma.panicAlert.findFirst({
+    prisma.panicAlert.findMany({
       where: { isResolved: false },
+      orderBy: { triggeredAt: "desc" },
+      take: 5,
       include: { user: { select: { name: true, address: true } } },
     }),
   ]);
 
-  return { recentEvents, upcomingEvents, lastPanic };
+  return { recentEvents, upcomingEvents, activeAlerts };
 }
 
 function getGreeting() {
@@ -96,7 +98,7 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { recentEvents, upcomingEvents, lastPanic } =
+  const { recentEvents, upcomingEvents, activeAlerts } =
     await getDashboardData(session.user.id);
 
   const greeting = getGreeting();
@@ -186,6 +188,10 @@ export default async function DashboardPage() {
         .dp-panic-title { font-weight: 700; color: #dc2626; font-size: 13.5px; }
         .dp-panic-body { font-size: 12.5px; color: #64748b; margin-top: 2px; line-height: 1.4; }
         .dp-panic-link { font-size: 12px; color: #dc2626; font-weight: 600; text-decoration: none; margin-top: 4px; display: inline-block; }
+        /* multi-alert list */
+        .dp-panic-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .dp-panic-list-item { font-size: 12.5px; color: #374151; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; }
+        .dp-panic-list-item::before { content: "•"; color: #dc2626; font-weight: 700; flex-shrink: 0; }
 
         /* ── Section header ── */
         .dp-section {
@@ -406,20 +412,42 @@ export default async function DashboardPage() {
         </div>
 
         {/* ── Panic Banner (conditional) ── */}
-        {lastPanic && (
+        {activeAlerts.length > 0 && (
           <div className="dp-panic-banner">
             <div className="dp-panic-icon">
               <AlertTriangle size={18} color="white" />
             </div>
-            <div>
-              <p className="dp-panic-title">⚠️ Alert Darurat Aktif!</p>
-              <p className="dp-panic-body">
-                {lastPanic.user.name} membutuhkan bantuan di{" "}
-                <strong>{lastPanic.user.address}</strong>
-              </p>
-              <Link href="/dashboard/panic" className="dp-panic-link">
-                Lihat detail →
-              </Link>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {activeAlerts.length === 1 ? (
+                // ── Single alert: tampilan seperti sebelumnya
+                <>
+                  <p className="dp-panic-title">⚠️ Alert Darurat Aktif!</p>
+                  <p className="dp-panic-body">
+                    {activeAlerts[0].user.name} membutuhkan bantuan di{" "}
+                    <strong>{activeAlerts[0].user.address}</strong>
+                  </p>
+                  <Link href="/dashboard/panic" className="dp-panic-link">
+                    Lihat detail →
+                  </Link>
+                </>
+              ) : (
+                // ── Multiple alerts: tampilan daftar
+                <>
+                  <p className="dp-panic-title">⚠️ {activeAlerts.length} Alert Darurat Aktif!</p>
+                  <ul className="dp-panic-list">
+                    {activeAlerts.map((alert) => (
+                      <li key={alert.id} className="dp-panic-list-item">
+                        <span>
+                          <strong>{alert.user.name}</strong> — {alert.user.address}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/dashboard/panic" className="dp-panic-link">
+                    Lihat semua detail →
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
