@@ -9,7 +9,8 @@ import {
   TrendingUp,
   CheckCircle2,
   Clock,
-  XCircle,
+  ChevronRight,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -57,44 +58,62 @@ export default async function AdminPage() {
     {
       label: "Total Warga",
       value: stats.totalUsers,
-      icon: Users,
-      color: "from-blue-600 to-cyan-700",
       sub: "Warga terdaftar",
+      iconBg: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+      iconShadow: "rgba(37,99,235,0.3)",
+      icon: Users,
+      borderColor: "#dbeafe",
+      badge: null as number | null,
     },
     {
       label: "IPL Lunas",
       value: stats.totalPaid,
-      icon: CheckCircle2,
-      color: "from-green-600 to-emerald-700",
       sub: "Pembayaran berhasil",
+      iconBg: "linear-gradient(135deg, #16a34a, #15803d)",
+      iconShadow: "rgba(22,163,74,0.3)",
+      icon: CheckCircle2,
+      borderColor: "#dcfce7",
+      badge: null as number | null,
     },
     {
       label: "IPL Belum Bayar",
       value: stats.totalUnpaid + stats.totalOverdue,
-      icon: Clock,
-      color: "from-yellow-600 to-orange-700",
       sub: `${stats.totalOverdue} terlambat`,
+      iconBg: "linear-gradient(135deg, #d97706, #b45309)",
+      iconShadow: "rgba(217,119,6,0.3)",
+      icon: Clock,
+      borderColor: "#fef3c7",
+      badge: stats.totalOverdue > 0 ? stats.totalOverdue : null as number | null,
     },
     {
       label: "Alert Aktif",
       value: stats.activeAlerts,
+      sub: stats.activeAlerts > 0 ? "Butuh perhatian!" : "Komplek aman",
+      iconBg: "linear-gradient(135deg, #dc2626, #b91c1c)",
+      iconShadow: "rgba(220,38,38,0.3)",
       icon: AlertTriangle,
-      color: "from-red-600 to-rose-700",
-      sub: "Butuh perhatian",
+      borderColor: stats.activeAlerts > 0 ? "#fecaca" : "#fee2e2",
+      badge: null as number | null,
     },
     {
       label: "Total Pendapatan",
       value: `Rp ${(stats.totalRevenue / 1000).toFixed(0)}k`,
-      icon: TrendingUp,
-      color: "from-purple-600 to-violet-700",
       sub: "IPL terkumpul",
+      iconBg: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+      iconShadow: "rgba(124,58,237,0.3)",
+      icon: TrendingUp,
+      borderColor: "#ede9fe",
+      badge: null as number | null,
     },
     {
       label: "Pengumuman",
       value: stats.totalEvents,
-      icon: CreditCard,
-      color: "from-indigo-600 to-blue-700",
       sub: "Event dibuat",
+      iconBg: "linear-gradient(135deg, #0891b2, #0e7490)",
+      iconShadow: "rgba(8,145,178,0.3)",
+      icon: Megaphone,
+      borderColor: "#cffafe",
+      badge: null as number | null,
     },
   ];
 
@@ -102,96 +121,182 @@ export default async function AdminPage() {
     {
       href: "/admin/warga",
       label: "Manajemen Warga",
-      icon: Users,
       desc: "Lihat dan kelola daftar warga komplek",
-      color: "from-blue-600 to-cyan-700",
+      accentColor: "#2563eb",
+      accentBg: "#eff6ff",
+      icon: Users,
+      badge: undefined as number | undefined,
     },
     {
       href: "/admin/ipl",
       label: "Laporan IPL",
-      icon: CreditCard,
       desc: "Pantau status pembayaran semua warga",
-      color: "from-green-600 to-emerald-700",
+      accentColor: "#16a34a",
+      accentBg: "#f0fdf4",
+      icon: CreditCard,
+      badge: undefined as number | undefined,
     },
     {
       href: "/admin/alerts",
       label: "Panic Alerts",
-      icon: AlertTriangle,
       desc: "Kelola dan resolusi alert darurat",
-      color: "from-red-600 to-rose-700",
+      accentColor: "#dc2626",
+      accentBg: "#fff1f2",
+      icon: AlertTriangle,
+      badge: stats.activeAlerts > 0 ? stats.activeAlerts : undefined,
     },
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="animate-float-up">
-        <div className="flex items-center gap-3 mb-1">
-          <Shield className="w-5 h-5 text-yellow-500" />
-          <span className="text-sm text-muted-foreground">Panel Admin</span>
+    <>
+      <style>{`
+        .admin-page { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a; }
+        .admin-stat-card {
+          background: #ffffff;
+          border-radius: 18px;
+          padding: 18px 16px;
+          position: relative;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          transition: transform 0.18s, box-shadow 0.18s;
+          border-width: 1.5px;
+          border-style: solid;
+        }
+        .admin-stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        .admin-menu-card {
+          background: #ffffff;
+          border: 1.5px solid #e8eef6;
+          border-radius: 18px;
+          padding: 20px;
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+          text-decoration: none;
+          color: inherit;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          transition: transform 0.18s, box-shadow 0.18s;
+        }
+        .admin-menu-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .admin-section-label {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #94a3b8;
+          margin: 0 0 14px;
+        }
+        @media (min-width: 768px) {
+          .admin-stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .admin-menus-grid { grid-template-columns: repeat(3, 1fr) !important; }
+        }
+      `}</style>
+
+      <div className="admin-page" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+        {/* ── Header ── */}
+        <div style={{ paddingBottom: 20, borderBottom: "1.5px solid #e8eef6" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Shield size={15} color="#d97706" strokeWidth={2.5} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#92400e", letterSpacing: "0.03em" }}>
+              Panel Admin · WargaKu
+            </span>
+          </div>
+          <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.4px" }}>
+            Dashboard Admin
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            Selamat datang, {session.user.name} — Komplek WargaKu
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Dashboard Admin
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Selamat datang, {session.user.name} · Komplek WargaKu
-        </p>
-      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="surface p-4 hover-lift">
-              <div
-                className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3`}
-              >
-                <Icon className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-sm font-medium text-foreground/80 mt-0.5">
-                {stat.label}
-              </p>
-              <p className="text-xs text-muted-foreground">{stat.sub}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Admin Menus */}
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Kelola Komplek
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {adminMenus.map((menu) => {
-            const Icon = menu.icon;
-            return (
-              <Link
-                key={menu.href}
-                href={menu.href}
-                className="surface p-5 flex flex-col gap-3 hover-lift group overflow-hidden relative"
-              >
+        {/* ── Stats Grid ── */}
+        <div>
+          <p className="admin-section-label">Ringkasan Statistik</p>
+          <div
+            className="admin-stats-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}
+          >
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
                 <div
-                  className={`absolute inset-0 bg-gradient-to-br ${menu.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                />
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${menu.color} flex items-center justify-center`}
+                  key={stat.label}
+                  className="admin-stat-card"
+                  style={{ borderColor: stat.borderColor }}
                 >
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{menu.label}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {menu.desc}
+                  {stat.badge !== null && (
+                    <span style={{
+                      position: "absolute", top: 10, right: 10,
+                      background: "#dc2626", color: "#fff",
+                      fontSize: 10, fontWeight: 700,
+                      padding: "2px 7px", borderRadius: 20,
+                    }}>{stat.badge}</span>
+                  )}
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 12,
+                    background: stat.iconBg,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: `0 3px 10px ${stat.iconShadow}`,
+                    marginBottom: 14,
+                  }}>
+                    <Icon size={20} color="white" strokeWidth={2} />
+                  </div>
+                  <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>
+                    {stat.value}
                   </p>
+                  <p style={{ margin: "4px 0 2px", fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                    {stat.label}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11.5, color: "#94a3b8" }}>{stat.sub}</p>
                 </div>
-              </Link>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Admin Menus ── */}
+        <div>
+          <p className="admin-section-label">Kelola Komplek</p>
+          <div
+            className="admin-menus-grid"
+            style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}
+          >
+            {adminMenus.map((menu) => {
+              const Icon = menu.icon;
+              return (
+                <Link key={menu.href} href={menu.href} className="admin-menu-card">
+                  <div style={{
+                    width: 48, height: 48,
+                    borderRadius: 14,
+                    background: menu.accentBg,
+                    border: `1.5px solid ${menu.accentColor}22`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <Icon size={22} color={menu.accentColor} strokeWidth={2} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14.5, color: "#0f172a" }}>
+                        {menu.label}
+                      </p>
+                      {menu.badge && (
+                        <span style={{
+                          background: "#dc2626", color: "#fff",
+                          fontSize: 10, fontWeight: 700,
+                          padding: "2px 8px", borderRadius: 20,
+                        }}>{menu.badge} aktif</span>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12.5, color: "#64748b", lineHeight: 1.4 }}>
+                      {menu.desc}
+                    </p>
+                  </div>
+                  <ChevronRight size={18} color="#cbd5e1" style={{ flexShrink: 0, marginTop: 2 }} />
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

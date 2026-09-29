@@ -68,9 +68,10 @@ interface IplClientViewProps {
 
 export function IplClientView({ initialPayments }: IplClientViewProps) {
   const router = useRouter();
-  const [payments] = useState<PaymentItem[]>(initialPayments);
+  const [payments, setPayments] = useState<PaymentItem[]>(initialPayments);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmStatusModalOpen, setConfirmStatusModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [showBankInfo, setShowBankInfo] = useState(true);
@@ -81,8 +82,14 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [isConfirmingStatus, setIsConfirmingStatus] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sinkronkan state saat props initialPayments diperbarui dari server (misal via router.refresh)
+  useEffect(() => {
+    setPayments(initialPayments);
+  }, [initialPayments]);
 
   const unpaid = payments.filter((p) => p.status !== "PAID");
   const paid = payments.filter((p) => p.status === "PAID");
@@ -102,6 +109,34 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
   useEffect(() => {
     return () => stopPolling();
   }, []);
+
+  // Update status lokal secara langsung agar UI responsif seketika
+  const markPaymentAsPaid = (paymentId: string, updatedData?: Partial<PaymentItem>) => {
+    setPayments((prev) =>
+      prev.map((p) =>
+        p.id === paymentId
+          ? {
+              ...p,
+              status: "PAID" as const,
+              paymentDate: updatedData?.paymentDate || new Date().toISOString(),
+              receiptNumber:
+                updatedData?.receiptNumber ||
+                p.receiptNumber ||
+                `WK-${p.year}-${String(p.month).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`,
+              method: updatedData?.method || p.method || "QRIS",
+            }
+          : p
+      )
+    );
+  };
+
+  // Fungsi auto refresh data halaman dan server component
+  const triggerAutoRefresh = () => {
+    router.refresh();
+    setTimeout(() => {
+      router.refresh();
+    }, 600);
+  };
 
   // Countdown timer untuk expired QRIS
   useEffect(() => {
@@ -137,13 +172,14 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
       const data = await res.json();
       if (data.status === "PAID") {
         stopPolling();
+        markPaymentAsPaid(paymentId, data);
         setDone(true);
         toast.success("Pembayaran QRIS berhasil diterima! 🎉");
         setTimeout(() => {
           setDialogOpen(false);
           setDone(false);
-          router.refresh();
-        }, 1800);
+          triggerAutoRefresh();
+        }, 1200);
       }
     } catch {
       // Abaikan error polling sementara
@@ -180,11 +216,39 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
     }
   };
 
-  const handleManualCheckStatus = async () => {
+  // Konfirmasi status dari modal pop up "Saya Sudah Bayar"
+  const handleConfirmPaymentStatus = async () => {
     if (!selectedPayment) return;
-    setIsCheckingStatus(true);
-    await checkStatus(selectedPayment.id);
-    setIsCheckingStatus(false);
+    setIsConfirmingStatus(true);
+    try {
+      const res = await fetch(`/api/ipl/${selectedPayment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pay", method: "QRIS" }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal mengonfirmasi status pembayaran");
+      }
+
+      const resData = await res.json();
+      stopPolling();
+      markPaymentAsPaid(selectedPayment.id, resData.payment);
+      setConfirmStatusModalOpen(false);
+      setDialogOpen(false);
+      setDone(false);
+
+      toast.success("Pembayaran berhasil dikonfirmasi! Status telah Lunas 🎉");
+
+      // Auto refresh halaman
+      triggerAutoRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memproses konfirmasi status";
+      toast.error(msg);
+    } finally {
+      setIsConfirmingStatus(false);
+    }
   };
 
   // Mock bayar langsung untuk pengujian instan jika dibutuhkan
@@ -195,7 +259,7 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
       const res = await fetch(`/api/ipl/${selectedPayment.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "pay" }),
+        body: JSON.stringify({ action: "pay", method: "MOCK_TRANSFER" }),
       });
 
       if (!res.ok) {
@@ -203,14 +267,16 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
         throw new Error(err.error || "Gagal memproses pembayaran");
       }
 
+      const resData = await res.json();
       stopPolling();
+      markPaymentAsPaid(selectedPayment.id, resData.payment);
       setDone(true);
       toast.success("Pembayaran berhasil! Terima kasih 🎉");
       setTimeout(() => {
         setDialogOpen(false);
         setDone(false);
-        router.refresh();
-      }, 1400);
+        triggerAutoRefresh();
+      }, 1000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memproses pembayaran";
       toast.error(msg);
@@ -1161,12 +1227,12 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
               <div className="flex flex-col w-full gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={handleManualCheckStatus}
+                  onClick={() => setConfirmStatusModalOpen(true)}
                   className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                  disabled={isCheckingStatus}
+                  disabled={isCheckingStatus || isConfirmingStatus}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingStatus ? "animate-spin" : ""}`} />
-                  <span>{isCheckingStatus ? "Memeriksa..." : "Saya Sudah Bayar (Cek Status)"}</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Saya Sudah Bayar (Cek Status)</span>
                 </button>
 
                 <div className="flex gap-2">
@@ -1240,6 +1306,78 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal Pop Up untuk "Saya Sudah Bayar" */}
+      <Dialog open={confirmStatusModalOpen} onOpenChange={setConfirmStatusModalOpen}>
+        <DialogContent className="z-[70] bg-white border border-[#e8eef6] text-slate-800 max-w-sm rounded-2xl p-6 shadow-2xl">
+          <DialogHeader className="text-center sm:text-center items-center">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-2 shadow-xs">
+              <CheckCircle2 className="w-7 h-7" strokeWidth={2.5} />
+            </div>
+            <DialogTitle className="text-slate-900 text-lg font-bold">
+              Konfirmasi Status Pembayaran
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs mt-1 text-center">
+              Pastikan Anda telah menyelesaikan pembayaran QRIS atau transfer sebelum mengonfirmasi.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPayment && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 my-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500 font-medium">Periode Tagihan</span>
+                <span className="font-semibold text-slate-800">
+                  {monthNames[selectedPayment.month]} {selectedPayment.year}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500 font-medium">Total Nominal</span>
+                <span className="font-bold text-blue-600 text-sm">
+                  Rp {selectedPayment.amount.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500 font-medium">Metode</span>
+                <span className="font-medium text-slate-700">QRIS Dinamis</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200/80">
+                <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                  Apakah Anda yakin <strong className="text-slate-700">sudah berhasil membayar</strong> tagihan ini? Status akan otomatis diperbarui dan halaman di-refresh.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex flex-row gap-2 sm:gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => setConfirmStatusModalOpen(false)}
+              className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              disabled={isConfirmingStatus}
+            >
+              Belum / Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmPaymentStatus}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5"
+              disabled={isConfirmingStatus}
+            >
+              {isConfirmingStatus ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  <span>Ya, Sudah Bayar</span>
+                </>
+              )}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

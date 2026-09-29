@@ -10,7 +10,7 @@ export async function PATCH(
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { action } = await req.json();
+  const { action, method } = await req.json();
 
   if (action !== "pay") {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -18,11 +18,11 @@ export async function PATCH(
 
   const payment = await prisma.iplPayment.findUnique({ where: { id } });
   if (!payment) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (payment.userId !== session.user.id) {
+  if (payment.userId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (payment.status === "PAID") {
-    return NextResponse.json({ error: "Already paid" }, { status: 400 });
+    return NextResponse.json({ success: true, payment, alreadyPaid: true });
   }
 
   // Generate mock receipt number
@@ -34,7 +34,7 @@ export async function PATCH(
       status: "PAID",
       paymentDate: new Date(),
       receiptNumber,
-      method: "MOCK_TRANSFER",
+      method: typeof method === "string" && method ? method : "QRIS",
     },
   });
 

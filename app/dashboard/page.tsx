@@ -23,8 +23,11 @@ async function getDashboardData(userId: string) {
       include: { author: { select: { name: true } } },
     }),
     prisma.communityEvent.findMany({
-      where: { category: "KEGIATAN" },
-      orderBy: { createdAt: "desc" },
+      where: {
+        category: "KEGIATAN",
+        eventDate: { gt: new Date() }, // hanya event yang belum lewat
+      },
+      orderBy: { eventDate: "asc" },   // urutan: paling dekat duluan
       take: 3,
       include: { author: { select: { name: true } } },
     }),
@@ -505,20 +508,18 @@ export default async function DashboardPage() {
           </div>
 
           {upcomingEvents.length === 0 ? (
-            <div className="dp-empty">Belum ada event mendatang</div>
+            <div className="dp-empty">Tidak ada kegiatan mendatang</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {upcomingEvents.map((event) => {
-                const daysDiff = differenceInDays(
-                  new Date(),
-                  new Date(event.createdAt)
-                );
+                const daysDiff = event.eventDate
+                  ? differenceInDays(new Date(event.eventDate), new Date())
+                  : null;
                 const badgeText =
-                  daysDiff === 0
-                    ? "Hari ini"
-                    : daysDiff > 0
-                    ? `+${daysDiff} hari`
-                    : `${Math.abs(daysDiff)} hari lagi`;
+                  daysDiff === null ? "Segera"
+                  : daysDiff === 0 ? "Hari ini"
+                  : daysDiff > 0 ? `${daysDiff} hari lagi`
+                  : "Segera";
 
                 return (
                   <Link

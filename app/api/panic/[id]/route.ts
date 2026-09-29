@@ -7,19 +7,29 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
-  const { action, note } = await req.json();
-
-  if (action !== "resolve") {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  }
+  const { note } = await req.json().catch(() => ({}));
 
   const alert = await prisma.panicAlert.findUnique({ where: { id } });
-  if (!alert) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!alert) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Warga hanya bisa resolve alert miliknya; admin bisa semua
+  if (alert.userId !== session.user.id && session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (alert.isResolved) {
+    return NextResponse.json(
+      { error: "Alert sudah diselesaikan sebelumnya" },
+      { status: 400 }
+    );
+  }
 
   const updated = await prisma.panicAlert.update({
     where: { id },
@@ -28,7 +38,7 @@ export async function PATCH(
       resolvedAt: new Date(),
       note: typeof note === "string" && note.trim()
         ? note.trim()
-        : "Diselesaikan oleh admin.",
+        : "Situasi sudah aman.",
     },
   });
 

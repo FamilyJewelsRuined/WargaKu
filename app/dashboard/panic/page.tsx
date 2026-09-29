@@ -5,14 +5,16 @@ import { AlertTriangle, Shield, Clock, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { PanicButtonClient } from "@/components/panic-button";
+import { SelfResolveAlertButton } from "@/components/self-resolve-alert-button";
 
 export default async function PanicPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const alerts = await prisma.panicAlert.findMany({
+    where: { userId: session.user.id }, // hanya tampilkan alert milik user sendiri
     orderBy: { triggeredAt: "desc" },
-    take: 10,
+    take: 20,
     include: {
       user: { select: { name: true, address: true, houseNumber: true } },
     },
@@ -110,7 +112,7 @@ export default async function PanicPage() {
                   </p>
                   {alert.note && (
                     <p className="text-xs text-muted-foreground mt-1 italic">
-                      {alert.note}
+                      📝 {alert.note}
                     </p>
                   )}
                 </div>
@@ -120,9 +122,7 @@ export default async function PanicPage() {
                       Teratasi
                     </span>
                   ) : (
-                    <span className="text-xs status-overdue px-2 py-1 rounded-full border animate-pulse">
-                      Darurat
-                    </span>
+                    <SelfResolveAlertButton alertId={alert.id} />
                   )}
                 </div>
               </div>

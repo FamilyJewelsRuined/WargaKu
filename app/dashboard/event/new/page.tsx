@@ -19,30 +19,13 @@ import {
   Check,
 } from "lucide-react";
 
-type UICategory =
-  | "Kegiatan Warga"
-  | "Kebersihan"
-  | "Keamanan"
-  | "Sosial"
-  | "Pemerintahan"
-  | "Lainnya";
+type DBCategory = "DUKA_CITA" | "PENGUMUMAN" | "KEGIATAN" | "LAINNYA";
 
-const uiCategoryMap: Record<UICategory, "KEGIATAN" | "PENGUMUMAN" | "DUKA_CITA" | "LAINNYA"> = {
-  "Kegiatan Warga": "KEGIATAN",
-  "Kebersihan": "LAINNYA",
-  "Keamanan": "LAINNYA",
-  "Sosial": "LAINNYA",
-  "Pemerintahan": "LAINNYA",
-  "Lainnya": "LAINNYA",
-};
-
-const categoryChips: UICategory[] = [
-  "Kegiatan Warga",
-  "Kebersihan",
-  "Keamanan",
-  "Sosial",
-  "Pemerintahan",
-  "Lainnya",
+const categoryChips: { value: DBCategory; label: string; emoji: string }[] = [
+  { value: "DUKA_CITA",  label: "Duka Cita",  emoji: "🕯️" },
+  { value: "PENGUMUMAN", label: "Pengumuman", emoji: "📢" },
+  { value: "KEGIATAN",   label: "Kegiatan",   emoji: "🏃" },
+  { value: "LAINNYA",    label: "Lainnya",    emoji: "📌" },
 ];
 
 export default function NewEventPage() {
@@ -55,7 +38,7 @@ export default function NewEventPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<UICategory>("Kegiatan Warga");
+  const [selectedCategory, setSelectedCategory] = useState<DBCategory>("PENGUMUMAN");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +77,7 @@ export default function NewEventPage() {
       }
     }
 
-    const category = uiCategoryMap[selectedCategory] || "KEGIATAN";
+    const category = selectedCategory;
 
     setLoading(true);
     try {
@@ -607,15 +590,15 @@ export default function NewEventPage() {
             </div>
             <div className="category-grid">
               {categoryChips.map((cat) => {
-                const isActive = selectedCategory === cat;
+                const isActive = selectedCategory === cat.value;
                 return (
                   <button
-                    key={cat}
+                    key={cat.value}
                     type="button"
                     className={`category-chip ${isActive ? "active" : ""}`}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => setSelectedCategory(cat.value)}
                   >
-                    <span>{cat}</span>
+                    <span>{cat.emoji} {cat.label}</span>
                     {isActive && <Check size={14} strokeWidth={2.5} />}
                   </button>
                 );

@@ -258,3 +258,56 @@
     border-color: rgba(154, 52, 18, 0.5);
   }
 }
+
+/* ==========================================
+   SONNER TOAST THEME OVERRIDE (Clean White & Theme Accents)
+   ========================================== */
+[data-sonner-toaster] {
+  --normal-bg: #ffffff !important;
+  --normal-text: #0f172a !important;
+  --normal-border: #e2e8f0 !important;
+  --success-bg: #f0fdf4 !important;
+  --success-text: #14532d !important;
+  --success-border: #bbf7d0 !important;
+  --error-bg: #fff1f2 !important;
+  --error-text: #881337 !important;
+  --error-border: #fecdd3 !important;
+  --info-bg: #eff6ff !important;
+  --info-text: #1e3a8a !important;
+  --info-border: #bfdbfe !important;
+  --warning-bg: #fffbeb !important;
+  --warning-text: #78350f !important;
+  --warning-border: #fde68a !important;
+}
+
+[data-sonner-toast] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  border-radius: 1rem !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background-color: #f0fdf4 !important;
+  color: #14532d !important;
+  border-color: #bbf7d0 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: #fff1f2 !important;
+  color: #881337 !important;
+  border-color: #fecdd3 !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background-color: #eff6ff !important;
+  color: #1e3a8a !important;
+  border-color: #bfdbfe !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  background-color: #fffbeb !important;
+  color: #78350f !important;
+  border-color: #fde68a !important;
+}
