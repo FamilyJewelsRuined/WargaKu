@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -95,6 +95,17 @@ export function AdminIplView({
   const [payments, setPayments] = useState<PaymentRecord[]>(initialPayments);
   const [configs, setConfigs] = useState<IplConfigItem[]>(initialConfigs);
   const [currentAmount, setCurrentAmount] = useState<number>(activeConfig?.amount ?? 50000);
+
+  // Sinkronkan state saat props dari server berubah (router.refresh setelah generate/ubah tarif)
+  useEffect(() => {
+    setPayments(initialPayments);
+  }, [initialPayments]);
+  useEffect(() => {
+    setConfigs(initialConfigs);
+  }, [initialConfigs]);
+  useEffect(() => {
+    if (activeConfig?.amount != null) setCurrentAmount(activeConfig.amount);
+  }, [activeConfig?.amount]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -579,7 +590,7 @@ export function AdminIplView({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Total Unit Aktif:</span>
+                <span className="text-slate-500 font-medium">Total Unit Aktif Berpenghuni:</span>
                 <span className="font-bold text-slate-800">{totalActiveUnits} unit</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2">

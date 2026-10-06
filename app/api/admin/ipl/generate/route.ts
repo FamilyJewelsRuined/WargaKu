@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
   // Ambil semua unit aktif
   const activeUnits = await prisma.householdUnit.findMany({
-    where: { isActive: true },
+    where: { isActive: true, members: { some: {} } },
     select: { id: true, unitNumber: true },
     orderBy: { unitNumber: "asc" },
   });
@@ -69,13 +69,13 @@ export async function POST(req: Request) {
 
     // 2. Ambil semua unit hunian aktif
     const activeUnits = await prisma.householdUnit.findMany({
-      where: { isActive: true },
+      where: { isActive: true, members: { some: {} } },
       select: { id: true, unitNumber: true },
     });
 
     if (activeUnits.length === 0) {
       return NextResponse.json(
-        { error: "Tidak ada unit hunian aktif untuk diterbitkan tagihan" },
+        { error: "Tidak ada unit aktif berpenghuni untuk diterbitkan tagihan" },
         { status: 400 }
       );
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -53,6 +53,9 @@ interface AdminUnitsViewProps {
 export function AdminUnitsView({ initialUnits }: AdminUnitsViewProps) {
   const router = useRouter();
   const [units, setUnits] = useState<UnitWithMembers[]>(initialUnits);
+  useEffect(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
   const [search, setSearch] = useState("");
   const [filterActive, setFilterActive] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
@@ -231,7 +234,7 @@ export function AdminUnitsView({ initialUnits }: AdminUnitsViewProps) {
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400">Unit Aktif (Dihuni)</p>
+            <p className="text-xs font-semibold text-slate-400">Unit Aktif</p>
             <p className="text-2xl font-black text-slate-900 leading-tight">
               {activeUnitsCount}
             </p>
@@ -456,7 +459,7 @@ export function AdminUnitsView({ initialUnits }: AdminUnitsViewProps) {
                   placeholder="Contoh: 02-01, A-01, atau Blok B-12"
                   value={unitNumber}
                   onChange={(e) => setUnitNumber(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:border-blue-500"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-blue-500"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   Format unik penanda rumah, contoh: &quot;JalurNoRmh&quot; seperti &quot;02-01&quot;.
@@ -472,7 +475,7 @@ export function AdminUnitsView({ initialUnits }: AdminUnitsViewProps) {
                   placeholder="Contoh: Jalur 2 No. 1, Blok A"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:border-blue-500"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-blue-500"
                 />
               </div>
 

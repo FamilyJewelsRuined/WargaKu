@@ -335,7 +335,8 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="text-input"
-                  autoComplete="email"
+                  autoComplete="username"
+                  name="username"
                 />
               </div>
             </div>
@@ -374,6 +375,8 @@ export default function RegisterPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="text-input"
+                  name="address"
+                  autoComplete="street-address"
                 />
               </div>
             </div>

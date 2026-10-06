@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -59,6 +59,14 @@ export function AdminPendaftaranView({
   const router = useRouter();
   const [users, setUsers] = useState<PendingUser[]>(initialUsers);
   const [units, setUnits] = useState<UnitItem[]>(initialUnits);
+
+  // Sinkronkan state saat props dari server berubah (router.refresh)
+  useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+  useEffect(() => {
+    setUnits(initialUnits);
+  }, [initialUnits]);
 
   // Modal Approve states
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
@@ -410,7 +418,7 @@ export function AdminPendaftaranView({
                       placeholder="Contoh: 02-01 atau B-05"
                       value={newUnitNumber}
                       onChange={(e) => setNewUnitNumber(e.target.value)}
-                      className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-xs font-medium focus:outline-none focus:border-blue-500"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
@@ -423,7 +431,7 @@ export function AdminPendaftaranView({
                       placeholder="Contoh: Jalur 2 No. 1"
                       value={newUnitAddress}
                       onChange={(e) => setNewUnitAddress(e.target.value)}
-                      className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-xs font-medium focus:outline-none focus:border-blue-500"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>

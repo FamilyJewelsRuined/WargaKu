@@ -26,7 +26,7 @@ export default async function AdminIplPage() {
       },
     }),
     prisma.householdUnit.count({
-      where: { isActive: true },
+      where: { isActive: true, members: { some: {} } },
     }),
   ]);
 

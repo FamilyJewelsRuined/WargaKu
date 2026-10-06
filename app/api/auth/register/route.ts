@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { normalizePhone, phoneVariants } from "@/lib/phone";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Nama minimal 2 karakter"),
@@ -36,6 +37,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // Normalisasi & cek duplikat nomor HP (dipakai sebagai identitas login)
+    let normalizedPhone: string | null = null;
+    if (phone) {
+      normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        return NextResponse.json(
+          { error: "Format nomor HP tidak valid. Contoh: 081234567890" },
+          { status: 400 }
+        );
+      }
+      const phoneTaken = await prisma.user.findFirst({
+        where: { phone: { in: phoneVariants(normalizedPhone) } },
+        select: { id: true },
+      });
+      if (phoneTaken) {
+        return NextResponse.json(
+          { error: "Nomor HP sudah terdaftar. Gunakan nomor lain atau masuk ke akun Anda." },
+          { status: 409 }
+        );
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -45,7 +68,7 @@ export async function POST(req: Request) {
         name,
         email,
         password: hashedPassword,
-        phone: phone || null,
+        phone: normalizedPhone,
         address: address || null,
         role: "WARGA",
         status: "PENDING",

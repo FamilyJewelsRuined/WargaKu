@@ -96,7 +96,7 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        toast.error("Email atau password salah");
+        toast.error("Email/nomor HP atau password salah");
       } else {
         toast.success("Login berhasil! Selamat datang 👋");
         router.push("/dashboard");
@@ -509,13 +509,15 @@ export default function LoginPage() {
               <Mail className="login-field-icon" />
               <input
                 id="login-email"
-                type="email"
+                name="username"
+                type="text"
+                inputMode="email"
                 className="login-input"
                 placeholder="Email atau Nomor HP"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
 
@@ -524,6 +526,7 @@ export default function LoginPage() {
               <Lock className="login-field-icon" />
               <input
                 id="login-password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 className="login-input"
                 placeholder="Kata Sandi"
