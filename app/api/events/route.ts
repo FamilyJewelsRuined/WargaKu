@@ -8,6 +8,7 @@ const eventSchema = z.object({
   content: z.string().min(1, "Konten/deskripsi wajib diisi").max(5000, "Konten maksimal 5000 karakter"),
   category: z.enum(["DUKA_CITA", "PENGUMUMAN", "KEGIATAN", "LAINNYA"]).default("KEGIATAN"),
   eventDate: z.string().nullable().optional(),
+  attachments: z.array(z.string().url("URL lampiran tidak valid")).max(5, "Maksimal 5 foto per event").optional().default([]),
 });
 
 export async function GET() {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: firstMessage }, { status: 400 });
   }
 
-  const { title, content, category, eventDate } = parsed.data;
+  const { title, content, category, eventDate, attachments } = parsed.data;
 
   const event = await prisma.communityEvent.create({
     data: {
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
       content,
       category,
       eventDate: eventDate ? new Date(eventDate) : null,
+      attachments: attachments ?? [],
     },
   });
 

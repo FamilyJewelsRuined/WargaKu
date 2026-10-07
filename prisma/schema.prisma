@@ -139,15 +139,16 @@ model PanicAlert {
 // ============================================================
 
 model CommunityEvent {
-  id         String        @id @default(cuid())
-  authorId   String
-  title      String
-  content    String        @db.Text
-  category   EventCategory
-  eventDate  DateTime?     // tanggal acara (opsional)
-  archivedAt DateTime?     // null = aktif; terisi = diarsipkan oleh admin
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  authorId    String
+  title       String
+  content     String        @db.Text
+  category    EventCategory
+  eventDate   DateTime?     // tanggal acara (opsional)
+  archivedAt  DateTime?     // null = aktif; terisi = diarsipkan oleh admin
+  attachments String[]      // array URL foto lampiran yang diupload ke storage
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 

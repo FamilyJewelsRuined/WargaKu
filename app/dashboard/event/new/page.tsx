@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ import {
   Send,
   Loader2,
   Check,
+  X,
+  ImageIcon,
 } from "lucide-react";
 
 type DBCategory = "DUKA_CITA" | "PENGUMUMAN" | "KEGIATAN" | "LAINNYA";
@@ -30,7 +32,9 @@ const categoryChips: { value: DBCategory; label: string; emoji: string }[] = [
 
 export default function NewEventPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -39,6 +43,48 @@ export default function NewEventPage() {
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<DBCategory>("PENGUMUMAN");
+  const [uploadedFiles, setUploadedFiles] = useState<
+    { url: string; name: string }[]
+  >([]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    if (uploadedFiles.length + files.length > 5) {
+      toast.error("Maksimal 5 foto per pengumuman");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Gagal mengunggah foto");
+        }
+        const { url } = await res.json();
+        setUploadedFiles((prev) => [...prev, { url, name: file.name }]);
+      }
+      toast.success(
+        files.length === 1 ? "Foto berhasil diunggah!" : `${files.length} foto berhasil diunggah!`
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal mengunggah foto";
+      toast.error(msg);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +135,7 @@ export default function NewEventPage() {
           content: finalContent,
           category,
           eventDate,
+          attachments: uploadedFiles.map((f) => f.url),
         }),
       });
 
@@ -403,9 +450,13 @@ export default function NewEventPage() {
           cursor: pointer;
           transition: background 0.15s, border-color 0.15s;
         }
-        .upload-dropzone:hover {
+        .upload-dropzone:hover:not(.uploading) {
           background: #f0f7ff;
           border-color: #3b82f6;
+        }
+        .upload-dropzone.uploading {
+          cursor: not-allowed;
+          opacity: 0.7;
         }
         .upload-icon {
           color: #64748b;
@@ -421,6 +472,61 @@ export default function NewEventPage() {
           font-size: 11px;
           color: #94a3b8;
           margin: 0;
+        }
+
+        /* Photo Preview Grid */
+        .photo-preview-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-top: 10px;
+        }
+        @media (max-width: 400px) {
+          .photo-preview-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        .preview-item {
+          position: relative;
+          aspect-ratio: 1;
+          border-radius: 10px;
+          overflow: hidden;
+          border: 1.5px solid #e2e8f0;
+          background: #f8fafc;
+        }
+        .preview-item img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .preview-remove-btn {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: rgba(15, 23, 42, 0.7);
+          color: #ffffff;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s;
+          padding: 0;
+        }
+        .preview-remove-btn:hover {
+          background: #ef4444;
+        }
+        .upload-count-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #64748b;
+          margin-top: 6px;
         }
 
         /* Submit Button */
@@ -615,16 +721,68 @@ export default function NewEventPage() {
               <label className="field-label">Lampiran (Opsional)</label>
             </div>
             <p className="field-sublabel">
-              Bisa tambah foto, dokumen, atau gambar pendukung.
+              Bisa tambah foto pendukung. Maks. 5 foto, 10MB per foto.
             </p>
-            <div
-              className="upload-dropzone"
-              onClick={() => toast.info("Fitur unggah berkas segera hadir.")}
-            >
-              <UploadCloud size={28} className="upload-icon" />
-              <p className="upload-title">Ketuk untuk mengunggah file</p>
-              <p className="upload-hint">JPG, PNG, PDF (maks. 10MB)</p>
-            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+              disabled={isUploading || uploadedFiles.length >= 5}
+            />
+
+            {/* Dropzone — hanya tampil jika belum 5 foto */}
+            {uploadedFiles.length < 5 && (
+              <div
+                className={`upload-dropzone ${isUploading ? "uploading" : ""}`}
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+              >
+                {isUploading ? (
+                  <Loader2 size={28} className="upload-icon animate-spin" />
+                ) : (
+                  <UploadCloud size={28} className="upload-icon" />
+                )}
+                <p className="upload-title">
+                  {isUploading ? "Mengunggah foto..." : "Ketuk untuk mengunggah foto"}
+                </p>
+                <p className="upload-hint">
+                  {isUploading
+                    ? "Harap tunggu"
+                    : `JPG, PNG, WebP, GIF · Sisa ${5 - uploadedFiles.length} slot`}
+                </p>
+              </div>
+            )}
+
+            {/* Preview foto yang sudah diupload */}
+            {uploadedFiles.length > 0 && (
+              <>
+                <div className="photo-preview-grid">
+                  {uploadedFiles.map((f, i) => (
+                    <div key={i} className="preview-item">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.url} alt={f.name} />
+                      <button
+                        type="button"
+                        className="preview-remove-btn"
+                        onClick={() => handleRemoveFile(i)}
+                        title="Hapus foto"
+                      >
+                        <X size={12} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <span className="upload-count-badge">
+                  <ImageIcon size={12} />
+                  {uploadedFiles.length} foto terlampir
+                  {uploadedFiles.length >= 5 && " (maksimal tercapai)"}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Submit */}

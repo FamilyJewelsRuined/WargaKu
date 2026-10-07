@@ -12,6 +12,33 @@ import {
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+/**
+ * Konversi URL foto ke proxy URL (/api/image?key=...).
+ * Menangani 3 format:
+ * 1. Sudah dalam format proxy: /api/image?key=...
+ * 2. Full S3 URL lama: https://t3.storage.dev/bucket/events/...
+ * 3. Hanya key relatif: events/userId/file.png
+ */
+function toProxyUrl(url: string): string {
+  if (!url) return url;
+  // Sudah proxy URL
+  if (url.startsWith("/api/image")) return url;
+  // Full S3 URL — ekstrak key (hapus protocol + host + bucket)
+  if (url.startsWith("http")) {
+    try {
+      const parsed = new URL(url);
+      // pathname contoh: /user-msjjuy6yzqhwjhjnlc4weyew/events/userId/file.png
+      const parts = parsed.pathname.split("/").slice(2); // hapus '' dan bucket name
+      const key = parts.join("/");
+      return `/api/image?key=${encodeURIComponent(key)}`;
+    } catch {
+      return url;
+    }
+  }
+  // Raw key
+  return `/api/image?key=${encodeURIComponent(url)}`;
+}
+
 const categoryStyles: Record<
   string,
   { label: string; emoji: string; bg: string; border: string; text: string }
@@ -56,6 +83,7 @@ interface EventCardProps {
     createdAt: Date;
     author: { name: string; houseNumber: string | null };
     authorId: string;
+    attachments: string[];
   };
   currentUserId: string;
 }
@@ -205,6 +233,42 @@ export function EventCard({ event, currentUserId }: EventCardProps) {
         .btn-delete:hover {
           color: #ef4444;
         }
+
+        /* Photo Strip */
+        .event-photo-strip {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding: 10px 0 4px;
+          scrollbar-width: none;
+          margin-top: 4px;
+        }
+        .event-photo-strip::-webkit-scrollbar {
+          display: none;
+        }
+        .event-photo-thumb {
+          width: 100px;
+          height: 100px;
+          border-radius: 10px;
+          object-fit: cover;
+          flex-shrink: 0;
+          border: 1.5px solid #e2e8f0;
+          cursor: pointer;
+          transition: opacity 0.15s, transform 0.15s;
+        }
+        .event-photo-thumb:hover {
+          opacity: 0.88;
+          transform: scale(1.02);
+        }
+        .event-photo-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #64748b;
+          margin-top: 8px;
+        }
       `}</style>
 
       <div className="event-card">
@@ -256,6 +320,31 @@ export function EventCard({ event, currentUserId }: EventCardProps) {
         <p className={`event-content ${!expanded ? "clamped" : ""}`}>
           {event.content}
         </p>
+
+        {/* Photo attachments — tampil ketika expanded */}
+        {expanded && event.attachments?.length > 0 && (
+          <>
+            <div className="event-photo-strip">
+              {event.attachments.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={toProxyUrl(url)}
+                  alt={`Foto lampiran ${i + 1}`}
+                  className="event-photo-thumb"
+                  onClick={() => window.open(toProxyUrl(url), "_blank")}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Photo badge ketika collapsed */}
+        {!expanded && event.attachments?.length > 0 && (
+          <span className="event-photo-badge">
+            📷 {event.attachments.length} foto terlampir
+          </span>
+        )}
 
         {/* Footer actions */}
         <div className="event-footer">
