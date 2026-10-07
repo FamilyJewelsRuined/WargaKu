@@ -53,6 +53,7 @@ export const authConfig = {
         nextUrl.pathname.startsWith("/api/push/vapid-public") ||
         nextUrl.pathname === "/manifest.json" ||
         nextUrl.pathname.startsWith("/icons/") ||
+        nextUrl.pathname.startsWith("/sounds/") ||
         nextUrl.pathname === "/sw.js";
 
       // 1. Endpoint publik dan otentikasi selalu diizinkan

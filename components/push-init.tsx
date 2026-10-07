@@ -2,9 +2,26 @@
 
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { playAlertSound, unlockAlertSound } from "@/lib/alert-sound";
 
 export function PushNotificationInit() {
   const { data: session } = useSession();
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "PLAY_ALERT_SOUND") playAlertSound();
+    };
+    const onFirstInteraction = () => unlockAlertSound();
+
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    window.addEventListener("pointerdown", onFirstInteraction, { once: true });
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+      window.removeEventListener("pointerdown", onFirstInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (!session?.user || !("serviceWorker" in navigator) || !("PushManager" in window)) {

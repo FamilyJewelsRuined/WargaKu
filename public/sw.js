@@ -1,7 +1,7 @@
 // WargaKu Service Worker
 // Handles: Web Push Notifications + Basic caching
 
-const CACHE_NAME = 'wargaku-v1';
+const CACHE_NAME = 'wargaku-v2';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -75,7 +75,15 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(title || 'WargaKu', options)
+    Promise.all([
+      self.registration.showNotification(title || 'WargaKu', options),
+      // SW tidak bisa memutar audio, jadi teruskan ke tab yang terbuka
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clients) =>
+          clients.forEach((c) => c.postMessage({ type: 'PLAY_ALERT_SOUND', tag }))
+        ),
+    ])
   );
 });
 
@@ -119,11 +127,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return;
 
+  // Biarkan browser menangani audio/Range request sendiri (hindari 206 di Cache API)
+  if (event.request.headers.has('range') || url.pathname.startsWith('/sounds/')) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
-        if (response.ok) {
+        // Cache hanya respons 200 penuh
+        if (response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);

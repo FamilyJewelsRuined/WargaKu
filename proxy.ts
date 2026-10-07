@@ -26,6 +26,6 @@ export const config = {
      * - Common static file extensions in /public
      *   (png, jpg, jpeg, gif, webp, svg, ico, mp4, pdf, txt, xml, woff, woff2)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|icons|manifest\\.json|sw\\.js|api/push/vapid-public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp4|pdf|txt|xml|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|icons|manifest\\.json|sw\\.js|api/push/vapid-public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp4|mp3|ogg|wav|pdf|txt|xml|woff2?)$).*)",
   ],
 };

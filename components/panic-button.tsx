@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, Loader2, PhoneCall } from "lucide-react";
 import { toast } from "sonner";
+import { playAlertSound } from "@/lib/alert-sound";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export function PanicButtonClient({
       if (!res.ok) throw new Error("Gagal mengirim alert");
 
       setSent(true);
+      playAlertSound();
       toast.error(`🚨 Alert darurat terkirim! Semua warga diberitahu.`, {
         duration: 8000,
       });
