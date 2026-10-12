@@ -17,9 +17,28 @@ export function playAlertSound() {
   try {
     const a = getAudio();
     a.currentTime = 0;
+    a.volume = 1.0;
     a.play().catch((err) => console.warn("Alert sound blocked:", err));
   } catch (err) {
     console.warn("Alert sound error:", err);
+  }
+}
+
+// Untuk panic alert: putar 3x berurutan agar lebih agresif
+export function playPanicSound() {
+  try {
+    const a = new Audio(ALERT_SOUND_URL);
+    a.volume = 1.0;
+    let count = 0;
+    a.addEventListener("ended", () => {
+      if (++count < 3) {
+        a.currentTime = 0;
+        a.play().catch(() => {});
+      }
+    });
+    a.play().catch((err) => console.warn("Panic sound blocked:", err));
+  } catch (err) {
+    console.warn("Panic sound error:", err);
   }
 }
 

@@ -33,7 +33,8 @@
     {
       "name": "Tombol Darurat",
       "url": "/dashboard/panic",
-      "description": "Kirim alert darurat ke warga"
+      "description": "Kirim alert darurat ke warga",
+      "icons": [{ "src": "/icons/icon-panic.png", "sizes": "192x192" }]
     },
     {
       "name": "Event Warga",

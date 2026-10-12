@@ -59,18 +59,25 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  const { title, body, icon, badge, tag, url } = payload;
+  const { title, body, icon, badge, tag, url, image } = payload;
 
   const options = {
     body: body || 'Ada notifikasi baru dari WargaKu',
     icon: icon || '/icons/icon-192.png',
     badge: badge || '/icons/icon-192.png',
+    image: image || undefined,
     tag: tag || 'wargaku-notification',
-    requireInteraction: tag === 'panic-alert', // Panic alerts require user interaction
-    vibrate: tag === 'panic-alert' ? [200, 100, 200, 100, 200] : [100, 50, 100],
+    requireInteraction: tag === 'panic-alert',
+    silent: false,
+    vibrate: tag === 'panic-alert'
+      ? [400, 150, 400, 150, 400, 150, 800] // pola SOS-like
+      : [100, 50, 100],
     data: { url: url || '/dashboard' },
     actions: tag === 'panic-alert'
-      ? [{ action: 'view', title: 'Lihat Detail' }]
+      ? [
+          { action: 'view',  title: '📍 Lihat Lokasi' },
+          { action: 'close', title: '✖ Tutup' },
+        ]
       : [],
   };
 

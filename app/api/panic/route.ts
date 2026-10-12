@@ -20,10 +20,11 @@ export async function POST() {
   // Broadcast push notification ke semua warga
   if (subscriptions.length > 0) {
     const { expired } = await broadcastPushNotification(subscriptions, {
-      title: "🚨 ALERT DARURAT — WargaKu",
-      body: `${session.user.name} membutuhkan bantuan di ${session.user.address ?? "lokasi tidak diketahui"}`,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      title: "🚨 BANTUAN DARURAT!",
+      body: `PERLU BANTUAN! ${session.user.name} membutuhkan bantuan sekarang! Ketuk untuk lihat lokasi.`,
+      icon: "/icons/icon-panic.png",
+      badge: "/icons/badge-panic.png",
+      image: "/icons/panic-banner.jpg",
       tag: "panic-alert",
       url: "/dashboard/panic",
     });
