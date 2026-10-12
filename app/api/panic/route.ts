@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { broadcastPushNotification } from "@/lib/push";
+import { sendTelegramEmergencyAlert } from "@/lib/telegram";
 
 export async function POST() {
   const session = await auth();
@@ -17,25 +18,37 @@ export async function POST() {
     where: { userId: { not: session.user.id } },
   });
 
-  // Broadcast push notification ke semua warga
-  if (subscriptions.length > 0) {
-    const { expired } = await broadcastPushNotification(subscriptions, {
-      title: "🚨 BANTUAN DARURAT!",
-      body: `PERLU BANTUAN! ${session.user.name} membutuhkan bantuan sekarang! Ketuk untuk lihat lokasi.`,
-      icon: "/icons/icon-panic.png",
-      badge: "/icons/badge-panic.png",
-      image: "/icons/panic-banner.jpg",
-      tag: "panic-alert",
-      url: "/dashboard/panic",
-    });
+  // Broadcast ke kedua channel secara paralel tanpa saling memblokir
+  await Promise.allSettled([
+    // Channel 1: Web Push ke PWA
+    (async () => {
+      if (subscriptions.length > 0) {
+        const { expired } = await broadcastPushNotification(subscriptions, {
+          title: "🚨 BANTUAN DARURAT!",
+          body: `PERLU BANTUAN! ${session.user.name} membutuhkan bantuan sekarang! Ketuk untuk lihat lokasi.`,
+          icon: "/icons/icon-panic.png",
+          badge: "/icons/badge-panic.png",
+          image: "/icons/panic-banner.jpg",
+          tag: "panic-alert",
+          url: "/dashboard/panic",
+        });
 
-    // Hapus subscripsi yang expired
-    if (expired.length > 0) {
-      await prisma.pushSubscription.deleteMany({
-        where: { id: { in: expired } },
-      });
-    }
-  }
+        // Hapus subscription yang expired
+        if (expired.length > 0) {
+          await prisma.pushSubscription.deleteMany({
+            where: { id: { in: expired } },
+          });
+        }
+      }
+    })(),
+
+    // Channel 2: Telegram Supergroup Fallback
+    sendTelegramEmergencyAlert({
+      callerName: session.user.name,
+      address: session.user.address,
+      alertUrl: "/dashboard/panic",
+    }),
+  ]);
 
   return NextResponse.json({ success: true, alertId: alert.id });
 }
