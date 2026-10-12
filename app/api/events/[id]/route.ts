@@ -25,7 +25,23 @@ export async function DELETE(
   if (event.attachments?.length) {
     await Promise.allSettled(
       event.attachments.map((url) => {
-        const key = url.replace(`${S3_PUBLIC_URL}/`, "");
+        let key = url;
+        if (url.includes("key=")) {
+          try {
+            const parsed = new URL(url, "http://localhost");
+            key = parsed.searchParams.get("key") || url;
+          } catch {
+            // fallback
+          }
+        } else if (url.startsWith("http")) {
+          try {
+            const parsed = new URL(url);
+            const parts = parsed.pathname.split("/").slice(2);
+            key = parts.join("/");
+          } catch {
+            key = url.replace(`${S3_PUBLIC_URL}/`, "");
+          }
+        }
         return s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
       })
     );

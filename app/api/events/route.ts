@@ -3,12 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+const attachmentItemSchema = z
+  .string()
+  .min(1, "URL lampiran tidak valid")
+  .max(2048, "URL lampiran terlalu panjang")
+  .refine(
+    (val) => {
+      const trimmed = val.trim();
+      return (
+        trimmed.startsWith("/") ||
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("events/")
+      );
+    },
+    { message: "URL lampiran tidak valid" }
+  );
+
 const eventSchema = z.object({
   title: z.string().min(1, "Judul event wajib diisi").max(200, "Judul maksimal 200 karakter"),
   content: z.string().min(1, "Konten/deskripsi wajib diisi").max(5000, "Konten maksimal 5000 karakter"),
   category: z.enum(["DUKA_CITA", "PENGUMUMAN", "KEGIATAN", "LAINNYA"]).default("KEGIATAN"),
   eventDate: z.string().nullable().optional(),
-  attachments: z.array(z.string().url("URL lampiran tidak valid")).max(5, "Maksimal 5 foto per event").optional().default([]),
+  attachments: z
+    .array(attachmentItemSchema)
+    .max(5, "Maksimal 5 foto per event")
+    .optional()
+    .default([]),
 });
 
 export async function GET() {
