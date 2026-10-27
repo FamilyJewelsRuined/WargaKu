@@ -63,12 +63,22 @@ interface PaymentItem {
   createdAt: string | Date;
 }
 
+export interface PublicPaymentAccount {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  label: string | null;
+  order: number;
+}
+
 interface IplClientViewProps {
   initialPayments: PaymentItem[];
   userAddress?: string | null;
+  paymentAccounts?: PublicPaymentAccount[];
 }
 
-export function IplClientView({ initialPayments }: IplClientViewProps) {
+export function IplClientView({ initialPayments, paymentAccounts = [] }: IplClientViewProps) {
   const router = useRouter();
   const [payments, setPayments] = useState<PaymentItem[]>(initialPayments);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
@@ -1081,59 +1091,65 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
                 <ChevronRight size={18} className="ipl-chevron" />
               </div>
 
-              {/* Card 2: Virtual Account Details */}
+              {/* Card 2: Rekening Resmi RT */}
               <div className="ipl-bank-details">
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                   <Landmark size={18} color="#2563eb" />
                   <span style={{ fontSize: "14px", fontWeight: 700, color: "#1e293b" }}>
-                    Nomor Rekening Virtual Account
+                    Nomor Rekening Resmi RT
                   </span>
                 </div>
 
-                <div className="ipl-bank-item">
-                  <div>
-                    <span className="ipl-bank-name">BCA Virtual Account</span>
-                    <div className="ipl-bank-acc">8271 0812 3456 7890</div>
+                {paymentAccounts.length === 0 ? (
+                  <div style={{
+                    padding: "16px 14px",
+                    background: "#f8fafc",
+                    borderRadius: "14px",
+                    border: "1.5px dashed #cbd5e1",
+                    fontSize: "12px",
+                    color: "#64748b",
+                    textAlign: "center",
+                    lineHeight: 1.5,
+                  }}>
+                    Belum ada nomor rekening resmi yang didaftarkan oleh pengurus RT. Silakan hubungi admin RT untuk informasi pembayaran transfer manual.
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard("8271081234567890", "BCA")}
-                    className="btn-copy-acc"
-                  >
-                    {copiedBank === "BCA" ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                    <span>{copiedBank === "BCA" ? "Disalin" : "Salin"}</span>
-                  </button>
-                </div>
-
-                <div className="ipl-bank-item">
-                  <div>
-                    <span className="ipl-bank-name">Mandiri Virtual Account</span>
-                    <div className="ipl-bank-acc">8962 1081 2345 6789</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard("8962108123456789", "Mandiri")}
-                    className="btn-copy-acc"
-                  >
-                    {copiedBank === "Mandiri" ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                    <span>{copiedBank === "Mandiri" ? "Disalin" : "Salin"}</span>
-                  </button>
-                </div>
-
-                <div className="ipl-bank-item">
-                  <div>
-                    <span className="ipl-bank-name">BRI Virtual Account</span>
-                    <div className="ipl-bank-acc">1289 0081 2345 6789</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard("1289008123456789", "BRI")}
-                    className="btn-copy-acc"
-                  >
-                    {copiedBank === "BRI" ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                    <span>{copiedBank === "BRI" ? "Disalin" : "Salin"}</span>
-                  </button>
-                </div>
+                ) : (
+                  paymentAccounts.map((acc) => (
+                    <div key={acc.id} className="ipl-bank-item">
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
+                          <span className="ipl-bank-name">{acc.bankName}</span>
+                          {acc.label && (
+                            <span style={{
+                              fontSize: "10px",
+                              padding: "1px 6px",
+                              borderRadius: "6px",
+                              background: "#f1f5f9",
+                              color: "#475569",
+                              fontWeight: 600,
+                            }}>
+                              {acc.label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="ipl-bank-acc">
+                          {acc.accountNumber.replace(/(\d{4})(?=\d)/g, "$1 ")}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                          a.n. <strong style={{ color: "#334155" }}>{acc.accountHolder}</strong>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(acc.accountNumber, acc.bankName)}
+                        className="btn-copy-acc"
+                      >
+                        {copiedBank === acc.bankName ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                        <span>{copiedBank === acc.bankName ? "Disalin" : "Salin"}</span>
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Panduan Pembayaran */}
@@ -1143,10 +1159,10 @@ export function IplClientView({ initialPayments }: IplClientViewProps) {
                   <span>Panduan Pembayaran</span>
                 </p>
                 <ol className="ipl-guide-list">
-                  <li>Salin nomor Virtual Account sesuai bank Anda.</li>
-                  <li>Masukkan nomor VA di menu transfer bank Anda.</li>
-                  <li>Pastikan nama tagihan sesuai dengan unit warga Anda.</li>
-                  <li>Bukti transaksi otomatis tersimpan di riwayat.</li>
+                  <li>Salin nomor rekening resmi bank RT di atas sesuai bank Anda.</li>
+                  <li>Masukkan nomor rekening di menu transfer aplikasi perbankan atau ATM Anda.</li>
+                  <li>Pastikan nama pemilik rekening sesuai dengan yang tercantum di atas.</li>
+                  <li>Atau lakukan pembayaran instan otomatis melalui tombol QRIS di samping tagihan aktif.</li>
                 </ol>
               </div>
             </div>

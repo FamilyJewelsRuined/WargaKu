@@ -97,17 +97,20 @@ export default function NewEventPage() {
       toast.error("Deskripsi event wajib diisi");
       return;
     }
-
-    // Build final content with optional location
-    let finalContent = description.trim();
-    if (location.trim()) {
-      finalContent += `\n\n📍 Lokasi: ${location.trim()}`;
+    if (description.length > 500) {
+      toast.error("Deskripsi maksimal 500 karakter");
+      return;
     }
 
-    // Check content is not empty
-    if (!finalContent.trim()) {
-      toast.error("Deskripsi event wajib diisi");
-      return;
+    if (selectedCategory === "KEGIATAN") {
+      if (!date || !time) {
+        toast.error("Tanggal & waktu kegiatan wajib diisi");
+        return;
+      }
+      if (!location.trim()) {
+        toast.error("Lokasi kegiatan wajib diisi");
+        return;
+      }
     }
 
     // Build eventDate if specified
@@ -132,9 +135,10 @@ export default function NewEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          content: finalContent,
+          content: description.trim(),
           category,
           eventDate,
+          location: location.trim() || null,
           attachments: uploadedFiles.map((f) => f.url),
         }),
       });
@@ -632,7 +636,7 @@ export default function NewEventPage() {
                 <CalendarIcon size={18} />
               </div>
               <label className="field-label">
-                Tanggal & Waktu <span className="required-star">*</span>
+                Tanggal & Waktu {selectedCategory === "KEGIATAN" && <span className="required-star">*</span>}
               </label>
             </div>
             <div className="datetime-card">
@@ -643,7 +647,7 @@ export default function NewEventPage() {
                   className="datetime-input"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  required
+                  required={selectedCategory === "KEGIATAN"}
                 />
               </div>
               <div className="datetime-divider" />
@@ -654,7 +658,7 @@ export default function NewEventPage() {
                   className="datetime-input"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  required
+                  required={selectedCategory === "KEGIATAN"}
                 />
               </div>
             </div>
@@ -667,7 +671,7 @@ export default function NewEventPage() {
                 <MapPin size={18} />
               </div>
               <label htmlFor="eventLocation" className="field-label">
-                Lokasi <span className="required-star">*</span>
+                Lokasi {selectedCategory === "KEGIATAN" && <span className="required-star">*</span>}
               </label>
             </div>
             <div className="location-input-wrap">
@@ -675,10 +679,10 @@ export default function NewEventPage() {
                 id="eventLocation"
                 type="text"
                 className="field-input"
-                placeholder="Contoh: Taman Utama Komplek"
+                placeholder={selectedCategory === "KEGIATAN" ? "Contoh: Taman Utama Komplek" : "Opsional (contoh: Masjid Al-Ikhlas)"}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                required
+                required={selectedCategory === "KEGIATAN"}
               />
               <MapIcon size={18} className="location-map-icon" />
             </div>

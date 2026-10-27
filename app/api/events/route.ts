@@ -1,39 +1,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { z } from "zod";
-
-const attachmentItemSchema = z
-  .string()
-  .min(1, "URL lampiran tidak valid")
-  .max(2048, "URL lampiran terlalu panjang")
-  .refine(
-    (val) => {
-      const trimmed = val.trim();
-      return (
-        trimmed.startsWith("/") ||
-        trimmed.startsWith("http://") ||
-        trimmed.startsWith("https://") ||
-        trimmed.startsWith("events/")
-      );
-    },
-    { message: "URL lampiran tidak valid" }
-  );
-
-const eventSchema = z.object({
-  title: z.string().min(1, "Judul event wajib diisi").max(200, "Judul maksimal 200 karakter"),
-  content: z.string().min(1, "Konten/deskripsi wajib diisi").max(5000, "Konten maksimal 5000 karakter"),
-  category: z.enum(["DUKA_CITA", "PENGUMUMAN", "KEGIATAN", "LAINNYA"]).default("KEGIATAN"),
-  eventDate: z.string().nullable().optional(),
-  attachments: z
-    .array(attachmentItemSchema)
-    .max(5, "Maksimal 5 foto per event")
-    .optional()
-    .default([]),
-});
+import { eventSchema } from "@/lib/validators/event";
 
 export async function GET() {
   const events = await prisma.communityEvent.findMany({
+    where: { archivedAt: null },
     orderBy: { createdAt: "desc" },
     include: { author: { select: { name: true, houseNumber: true } } },
   });
@@ -53,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: firstMessage }, { status: 400 });
   }
 
-  const { title, content, category, eventDate, attachments } = parsed.data;
+  const { title, content, category, eventDate, location, attachments } = parsed.data;
 
   const event = await prisma.communityEvent.create({
     data: {
@@ -62,6 +34,7 @@ export async function POST(req: Request) {
       content,
       category,
       eventDate: eventDate ? new Date(eventDate) : null,
+      location: location || null,
       attachments: attachments ?? [],
     },
   });

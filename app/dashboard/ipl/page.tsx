@@ -47,10 +47,24 @@ export default async function IplPage() {
   }
 
   const now = new Date();
-  const payments = await prisma.iplPayment.findMany({
-    where: { householdId: user.householdId },
-    orderBy: [{ year: "desc" }, { month: "desc" }],
-  });
+  const [payments, paymentAccounts] = await Promise.all([
+    prisma.iplPayment.findMany({
+      where: { householdId: user.householdId },
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+    }),
+    prisma.paymentAccount.findMany({
+      where: { isActive: true },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        bankName: true,
+        accountNumber: true,
+        accountHolder: true,
+        label: true,
+        order: true,
+      },
+    }),
+  ]);
 
   const serializablePayments = payments.map((p) => ({
     ...p,
@@ -68,6 +82,7 @@ export default async function IplPage() {
     <IplClientView
       initialPayments={serializablePayments}
       userAddress={user.address}
+      paymentAccounts={paymentAccounts}
     />
   );
 }

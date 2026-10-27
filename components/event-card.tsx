@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarDays,
+  MapPin,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -80,6 +81,7 @@ interface EventCardProps {
     content: string;
     category: string;
     eventDate: Date | null;
+    location?: string | null;
     createdAt: Date;
     author: { name: string; houseNumber: string | null };
     authorId: string;
@@ -304,15 +306,33 @@ export function EventCard({ event, currentUserId }: EventCardProps) {
           </div>
         </div>
 
-        {/* Event Date if exists */}
-        {event.eventDate && (
-          <div className="event-date-pill">
-            <CalendarDays size={14} />
-            <span>
-              {format(new Date(event.eventDate), "EEEE, dd MMMM yyyy", {
-                locale: idLocale,
-              })}
-            </span>
+        {/* Event Date & Location if exists */}
+        {(event.eventDate || event.location) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+            {event.eventDate && (
+              <div className="event-date-pill" style={{ marginBottom: 0 }}>
+                <CalendarDays size={14} />
+                <span>
+                  {format(new Date(event.eventDate), "EEEE, dd MMMM yyyy", {
+                    locale: idLocale,
+                  })}
+                </span>
+              </div>
+            )}
+            {event.location && (
+              <div
+                className="event-date-pill"
+                style={{
+                  marginBottom: 0,
+                  background: "#f0fdf4",
+                  borderColor: "#bbf7d0",
+                  color: "#15803d",
+                }}
+              >
+                <MapPin size={14} />
+                <span>{event.location}</span>
+              </div>
+            )}
           </div>
         )}
 

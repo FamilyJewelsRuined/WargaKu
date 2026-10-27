@@ -11,8 +11,6 @@ import {
   CalendarDays,
   LogOut,
   Shield,
-  MessageSquare,
-  Users,
   User,
   Bell,
   Menu,
@@ -21,15 +19,19 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { PushNotificationInit } from "@/components/push-init";
+import {
+  PanicDialogProvider,
+  usePanicDialog,
+} from "@/components/panic-confirm-dialog";
 
 /* ── Nav items ───────────────────────────────────────────────────── */
+// Jumlah item ganjil: item tengah (Darurat) benar-benar berada di tengah bilah.
 const bottomNavItems = [
   { href: "/dashboard", label: "Beranda", icon: Home },
-  { href: "/dashboard/event", label: "Pesan", icon: MessageSquare },
-  { href: "/dashboard/ipl", label: "Warga", icon: Users },
+  { href: "/dashboard/ipl", label: "IPL", icon: CreditCard },
+  { href: "#darurat", label: "Darurat", icon: AlertTriangle, panic: true },
   { href: "/dashboard/cctv", label: "CCTV", icon: Camera },
   { href: "/dashboard/event", label: "Event", icon: CalendarDays },
-  { href: "#profil", label: "Profil", icon: User },
 ];
 
 const sidebarNavItems = [
@@ -154,8 +156,9 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 }
 
 /* ── Bottom Navigation (mobile — light theme) ────────────────────── */
-function BottomNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+function BottomNav() {
   const pathname = usePathname();
+  const { openPanicDialog } = usePanicDialog();
 
   return (
     <>
@@ -168,14 +171,15 @@ function BottomNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           border-top: 1px solid #e8eef6;
           box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
           padding-bottom: max(8px, env(safe-area-inset-bottom));
+          overflow: visible;
         }
         .dash-bottom-nav-inner {
           display: flex;
           align-items: flex-end;
-          justify-content: space-around;
           padding: 8px 0 0;
         }
         .dash-bnav-item {
+          flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -185,7 +189,7 @@ function BottomNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           color: #94a3b8;
           transition: color 0.15s;
           position: relative;
-          min-width: 48px;
+          min-width: 0;
         }
         .dash-bnav-item.active {
           color: #2563eb;
@@ -203,33 +207,81 @@ function BottomNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           font-weight: 500;
           font-family: inherit;
         }
+
+        /* ── Tombol Darurat (tengah, menonjol) ── */
+        .dash-bnav-panic {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          padding: 0 6px 4px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .dash-bnav-panic-circle {
+          position: relative;
+          width: 58px; height: 58px;
+          margin-top: -30px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+          border: 4px solid #ffffff;
+          display: flex; align-items: center; justify-content: center;
+          color: #ffffff;
+          box-shadow: 0 6px 18px rgba(220,38,38,0.55);
+          transition: transform 0.15s;
+        }
+        .dash-bnav-panic:active .dash-bnav-panic-circle { transform: scale(0.92); }
+        .dash-bnav-panic-circle::after {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          border: 2px solid rgba(239,68,68,0.55);
+          animation: dashPanicPulse 1.8s ease-out infinite;
+          pointer-events: none;
+        }
+        @keyframes dashPanicPulse {
+          0%   { transform: scale(1);    opacity: 0.9; }
+          100% { transform: scale(1.45); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .dash-bnav-panic-circle::after { animation: none; opacity: 0; }
+        }
+        .dash-bnav-panic .dash-bnav-label {
+          color: #dc2626;
+          font-weight: 700;
+        }
       `}</style>
       <nav className="dash-bottom-nav md:hidden">
         <div className="dash-bottom-nav-inner">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href) &&
-                  ((item.href === "/dashboard/cctv" && item.label === "CCTV") ||
-                   (item.href === "/dashboard/event" && item.label === "Event") ||
-                   (item.href !== "/dashboard/event" && item.href !== "/dashboard/cctv"));
 
-            if (item.label === "Profil") {
+            if (item.panic) {
               return (
                 <button
                   key={item.label}
                   type="button"
-                  onClick={onOpenSidebar}
-                  className="dash-bnav-item"
-                  style={{ background: "none", border: "none", cursor: "pointer" }}
+                  onClick={openPanicDialog}
+                  className="dash-bnav-panic"
+                  aria-label="Darurat — kirim peringatan darurat"
                 >
-                  <Icon size={22} strokeWidth={1.8} />
+                  <span className="dash-bnav-panic-circle">
+                    <Icon size={26} strokeWidth={2.5} />
+                  </span>
                   <span className="dash-bnav-label">{item.label}</span>
                 </button>
               );
             }
+
+            const isActive =
+              item.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname.startsWith(item.href);
 
             return (
               <Link
@@ -371,7 +423,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <>
+    <PanicDialogProvider>
       <style>{`
         /* Light theme override for dashboard shell */
         .dash-shell {
@@ -411,11 +463,11 @@ export default function DashboardLayout({
         </div>
 
         {/* Mobile Bottom Nav */}
-        <BottomNav onOpenSidebar={() => setSidebarOpen(true)} />
+        <BottomNav />
 
         {/* PWA Push */}
         <PushNotificationInit />
       </div>
-    </>
+    </PanicDialogProvider>
   );
 }

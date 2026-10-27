@@ -35,11 +35,7 @@ export default async function PanicPage() {
       </div>
 
       {/* Panic Button */}
-      <PanicButtonClient
-        userName={session.user.name!}
-        userAddress={session.user.address ?? "Alamat tidak diketahui"}
-        userId={session.user.id}
-      />
+      <PanicButtonClient />
 
       {/* How it works */}
       <div className="surface p-5 space-y-4">

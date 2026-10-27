@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Users,
   CreditCard,
+  Landmark,
   AlertTriangle,
   Megaphone,
   UserCheck,
@@ -37,12 +38,13 @@ export default async function AdminLayout({
     { href: "/admin/units",       label: "Unit Hunian", icon: Building2 },
     { href: "/admin/warga",       label: "Warga",        icon: Users },
     { href: "/admin/ipl",         label: "Laporan IPL",  icon: CreditCard },
+    { href: "/admin/rekening",    label: "Rekening RT",  icon: Landmark },
     { href: "/admin/alerts",      label: "Panic Alerts", icon: AlertTriangle },
     { href: "/admin/events",      label: "Event",         icon: Megaphone },
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "#f5f7fa" }}>
+    <div className="min-h-screen text-slate-900" style={{ background: "#f5f7fa", color: "#0f172a" }}>
       {/* ── Admin Topbar ── */}
       <header style={{
         position: "sticky",

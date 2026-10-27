@@ -14,16 +14,19 @@ import {
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { PanicServiceCard } from "@/components/panic-service-card";
 
 async function getDashboardData(userId: string) {
   const [recentEvents, upcomingEvents, activeAlerts] = await Promise.all([
     prisma.communityEvent.findMany({
+      where: { archivedAt: null },
       orderBy: { createdAt: "desc" },
       take: 3,
       include: { author: { select: { name: true } } },
     }),
     prisma.communityEvent.findMany({
       where: {
+        archivedAt: null,
         category: "KEGIATAN",
         eventDate: { gt: new Date() }, // hanya event yang belum lewat
       },
@@ -103,11 +106,8 @@ export default async function DashboardPage() {
 
   const greeting = getGreeting();
   const userName = session.user.name ?? "Warga";
-  // Display name: use role-aware label for the greeting
-  const displayName =
-    session.user.role === "ADMIN"
-      ? "Bapak/Ibu RT 03"
-      : userName.split(" ").slice(0, 2).join(" ");
+  // Display name: sapaan ramah personal berdasarkan nama panggilan pengguna
+  const displayName = userName.split(" ").slice(0, 2).join(" ");
 
   return (
     <>
@@ -463,6 +463,19 @@ export default async function DashboardPage() {
           <div className="dp-services-grid">
             {services.map((svc) => {
               const Icon = svc.Icon;
+              if (svc.href === "/dashboard/panic") {
+                return (
+                  <PanicServiceCard
+                    key={svc.href}
+                    label={svc.label}
+                    desc={svc.desc}
+                    iconBg={svc.iconBg}
+                    iconColor={svc.iconColor}
+                    arrowBg={svc.arrowBg}
+                    arrowColor={svc.arrowColor}
+                  />
+                );
+              }
               return (
                 <Link key={svc.href} href={svc.href} className="dp-service-card">
                   <div className="dp-service-card-top">
@@ -561,20 +574,24 @@ export default async function DashboardPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p className="dp-event-title">{event.title}</p>
                       <p className="dp-event-author">{event.author.name}</p>
-                      <div className="dp-event-meta">
-                        <div className="dp-event-meta-row">
-                          <Clock size={11} color="#94a3b8" />
-                          <span>
-                            {format(new Date(event.createdAt), "EEEE, HH:mm 'WIB'", {
-                              locale: idLocale,
-                            })}
-                          </span>
-                        </div>
+                      <div className="dp-event-meta-row">
+                        <Clock size={11} color="#94a3b8" />
+                        <span>
+                          {event.eventDate
+                            ? format(new Date(event.eventDate), "EEEE, dd MMM · HH:mm 'WIB'", {
+                                locale: idLocale,
+                              })
+                            : format(new Date(event.createdAt), "EEEE, HH:mm 'WIB'", {
+                                locale: idLocale,
+                              })}
+                        </span>
+                      </div>
+                      {event.location && (
                         <div className="dp-event-meta-row">
                           <MapPin size={11} color="#94a3b8" />
-                          <span>Taman Utama Komplek</span>
+                          <span>{event.location}</span>
                         </div>
-                      </div>
+                      )}
                     </div>
                     <span className="dp-event-badge">{badgeText}</span>
                   </Link>

@@ -8,6 +8,22 @@ export async function POST() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Guard anti-duplikat: ketukan ganda dalam 2 menit tidak membuat alert baru
+  // dan tidak menyiarkan ulang ke semua warga.
+  const DUPLICATE_WINDOW_MS = 2 * 60 * 1000;
+  const recent = await prisma.panicAlert.findFirst({
+    where: {
+      userId: session.user.id,
+      isResolved: false,
+      triggeredAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+    },
+    orderBy: { triggeredAt: "desc" },
+    select: { id: true },
+  });
+  if (recent) {
+    return NextResponse.json({ success: true, alertId: recent.id, duplicate: true });
+  }
+
   // Simpan panic alert
   const alert = await prisma.panicAlert.create({
     data: { userId: session.user.id },
